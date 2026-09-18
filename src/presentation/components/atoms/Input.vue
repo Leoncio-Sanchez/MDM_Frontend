@@ -1,32 +1,22 @@
 <script setup lang="ts">
 interface Props {
-  modelValue: string | number;
   label: string;
+  modelValue?: string | number;
   error?: string;
-  placeholder?: string;
   type?: string;
-  disabled?: boolean;
+  placeholder?: string;
   required?: boolean;
-  class?: string;
+  disabled?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   type: 'text',
-  disabled: false,
-  required: false,
-  class: '',
+  modelValue: '',
 });
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string];
+  (e: 'update:modelValue', value: string | number): void;
 }>();
-
-// Vue's native way to handle forwardRef for the input element
-import { ref } from 'vue';
-const inputRef = ref<HTMLInputElement | null>(null);
-defineExpose({
-  input: inputRef,
-});
 </script>
 
 <template>
@@ -35,18 +25,16 @@ defineExpose({
       {{ label }}
     </label>
     <input
-      ref="inputRef"
       :type="type"
       :value="modelValue"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :required="required"
-      :class="[
-        'block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border',
-        error ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500' : '',
-        $props.class
-      ]"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+      :placeholder="placeholder"
+      :required="required"
+      :disabled="disabled"
+      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+      :class="[
+        error ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500' : ''
+      ]"
     />
     <p v-if="error" class="mt-2 text-sm text-red-600">{{ error }}</p>
   </div>

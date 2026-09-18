@@ -16,8 +16,8 @@ const handleSubmit = (e: Event) => {
   e.preventDefault();
   errorMsg.value = '';
   
-  if (!username.value || !password.value) {
-    errorMsg.value = 'Todos los campos son obligatorios';
+  if (!username.value.trim()) {
+    alert('El usuario es requerido');
     return;
   }
 
@@ -27,8 +27,8 @@ const handleSubmit = (e: Event) => {
       onSuccess: () => {
         router.push('/');
       },
-      onError: (err: any) => {
-        errorMsg.value = err.message || 'Credenciales inválidas';
+      onError: () => {
+        // Error handled in state (loginMutation.error)
       }
     }
   );
@@ -36,53 +36,42 @@ const handleSubmit = (e: Event) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="flex justify-center mb-6">
-        <div class="w-16 h-16 bg-blue-600 rounded-lg shadow-lg flex items-center justify-center">
-          <span class="text-3xl font-bold text-white">LF</span>
-        </div>
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div class="max-w-4xl w-full bg-white rounded-lg shadow-xl overflow-hidden flex">
+      <div class="w-1/2 bg-blue-50 p-12 flex-col justify-center items-center hidden md:flex">
+        <img src="/images/img-login.png" alt="Sistema LF ITSE" class="max-w-xs mb-8 drop-shadow-md" />
+        <h2 class="text-2xl font-bold text-blue-900 text-center">Sistema LF ITSE</h2>
       </div>
-      <h2 class="mt-2 text-center text-3xl font-extrabold text-gray-900 tracking-tight">
-        Sistema LF ITSE
-      </h2>
-      <p class="mt-2 text-center text-sm text-gray-600">
-        Plataforma unificada de gestión municipal
-      </p>
-    </div>
-
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-      <div class="bg-white py-8 px-4 shadow-xl shadow-gray-200/50 sm:rounded-xl sm:px-10 border border-gray-100">
-        <form class="space-y-6" @submit="handleSubmit">
-          <Input
-            label="Usuario institucional o DNI"
-            v-model="username"
-            placeholder="Ingrese su usuario"
-            required
+      <div class="w-full md:w-1/2 p-12 flex flex-col justify-center">
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-bold text-gray-900">Iniciar Sesión</h2>
+        </div>
+        <div v-if="loginMutation.error.value || errorMsg" class="bg-red-50 text-red-700 p-3 rounded mb-4 text-sm">
+          {{ errorMsg || (loginMutation.error.value as Error)?.message || 'Credenciales inválidas' }}
+        </div>
+        <form @submit="handleSubmit" class="space-y-6 w-full">
+          <Input 
+            label="Usuario" 
+            placeholder="Ingrese su usuario" 
+            v-model="username" 
+            :disabled="loginMutation.isPending.value" 
+            required 
           />
-
-          <Input
-            label="Contraseña"
-            type="password"
-            v-model="password"
-            placeholder="••••••••"
-            required
+          <Input 
+            label="Contraseña" 
+            type="password" 
+            placeholder="Ingrese su contraseña" 
+            v-model="password" 
+            :disabled="loginMutation.isPending.value" 
+            required 
           />
-
-          <div v-if="errorMsg || loginMutation.isError.value" class="p-3 bg-red-50 text-red-700 text-sm rounded-md border border-red-100">
-            {{ errorMsg || (loginMutation.error.value as Error)?.message || 'Credenciales inválidas' }}
-          </div>
-
-          <div>
-            <Button
-              type="submit"
-              variant="primary"
-              class="w-full shadow-md hover:shadow-lg transition-all py-2.5 text-base"
-              :is-loading="loginMutation.isPending.value"
-            >
-              Iniciar Sesión
-            </Button>
-          </div>
+          <Button 
+            type="submit" 
+            :is-loading="loginMutation.isPending.value" 
+            class="w-full py-3 text-base"
+          >
+            Ingresar
+          </Button>
         </form>
       </div>
     </div>

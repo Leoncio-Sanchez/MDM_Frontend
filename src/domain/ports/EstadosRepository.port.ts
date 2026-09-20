@@ -1,17 +1,10 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/domain/ports/EstadosRepository.port.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
+import type { PaginatedResponse } from '../types/PaginatedResponse';
 import type { Estados } from '../entities/Estados.entity';
 
 export interface EstadosRepositoryPort {
-  getAll(): Promise<Estados[]>;
+  getAll(params?: { page?: number }): Promise<PaginatedResponse<Estados>>;
   getById(id: number): Promise<Estados>;
-  create(data: Omit<Estados, 'id'>): Promise<Estados>;
-  update(id: number, data: Partial<Estados>): Promise<Estados>;
+  create(payload: Omit<Estados, 'id'>): Promise<Estados>;
+  update(id: number, payload: Partial<Estados>): Promise<Estados>;
   delete(id: number): Promise<void>;
 }

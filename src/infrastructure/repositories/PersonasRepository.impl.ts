@@ -1,3 +1,5 @@
+// TODO(MIGRATION): Este repositorio apunta a Django (8000).
+// Será refactorizado cuando el módulo migre a Laravel (FASE 3+).
 /**
  * @source golden-source
  * @origin reconstructed-frontend/src/infrastructure/repositories/PersonasRepository.impl.ts

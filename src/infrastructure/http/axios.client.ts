@@ -1,16 +1,8 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/infrastructure/http/axios.client.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
 import axios from 'axios';
 
 export const httpClient = axios.create({
-  baseURL: 'http://localhost:3001/api',
-  timeout: 10000,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8001/api',
+  timeout: Number(import.meta.env.VITE_HTTP_TIMEOUT) || 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -20,9 +12,9 @@ httpClient.interceptors.request.use((config) => {
   const stateStr = localStorage.getItem('auth-storage');
   if (stateStr) {
     try {
-      const state = JSON.parse(stateStr).state;
-      if (state && state.accessToken) {
-        config.headers.Authorization = `Bearer ${state.accessToken}`;
+      const state = JSON.parse(stateStr);
+      if (state && state.token) {
+        config.headers.Authorization = `Bearer ${state.token}`;
       }
     } catch(e) {}
   }

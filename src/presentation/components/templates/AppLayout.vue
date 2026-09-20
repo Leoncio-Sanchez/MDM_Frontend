@@ -43,8 +43,9 @@ const handleLogout = () => {
         </template>
 
         <template v-if="user?.role === 'ADMIN_MUNICIPALIDAD'">
-          <a href="/admin" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Dashboard General</a>
-          <a href="/admin/expedientes" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Expedientes TUPA</a>
+          <router-link to="/admin" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Dashboard General</router-link>
+          <router-link to="/admin/expedientes" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Expedientes TUPA</router-link>
+          <router-link to="/admin/estados" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Estados</router-link>
         </template>
       </nav>
 
@@ -73,7 +74,7 @@ const handleLogout = () => {
       
       <!-- Area de trabajo -->
       <div class="p-8">
-        <slot />
+        <router-view />
       </div>
     </main>
   </div>

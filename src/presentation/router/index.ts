@@ -22,8 +22,8 @@ const routes = [
           const role = authStore.user?.role;
           if (role === 'CIUDADANO' || role === 'EMPRESA') return '/ciudadano';
           if (role === 'INSPECTOR') return '/inspector';
-          if (role === 'ADMIN_MUNICIPALIDAD') return '/admin';
-          return '/login'; // Fallback
+          // admin, ADMIN_MUNICIPALIDAD, or any authenticated user goes to admin dashboard
+          return '/admin';
         }
       },
       {
@@ -78,11 +78,15 @@ router.beforeEach((to, _from, next) => {
     next({ name: 'root' });
   } else {
     if (to.meta.allowedRoles) {
+      // TODO(MIGRATION): During coexistence phase, Django users have 'admin'/'unknown' roles.
+      // Only block if user explicitly has a mismatched role. Allow access otherwise.
       const roles = to.meta.allowedRoles as string[];
-      if (authStore.user && !roles.includes(authStore.user.role)) {
-        if (authStore.user.role === 'CIUDADANO' || authStore.user.role === 'EMPRESA') return next('/ciudadano');
-        if (authStore.user.role === 'INSPECTOR') return next('/inspector');
-        if (authStore.user.role === 'ADMIN_MUNICIPALIDAD') return next('/admin');
+      const userRole = authStore.user?.role ?? '';
+      const hasKnownRole = ['CIUDADANO', 'EMPRESA', 'INSPECTOR', 'ADMIN_MUNICIPALIDAD'].includes(userRole);
+      if (hasKnownRole && !roles.includes(userRole)) {
+        if (userRole === 'CIUDADANO' || userRole === 'EMPRESA') return next('/ciudadano');
+        if (userRole === 'INSPECTOR') return next('/inspector');
+        return next('/admin');
       }
     }
     next();

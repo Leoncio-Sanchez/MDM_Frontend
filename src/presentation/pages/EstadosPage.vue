@@ -1,33 +1,38 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue';
+import {
+  useEstadosList,
+  useCrearEstado,
+  useEliminarEstado,
+} from '../../application/composables/useEstados';
 import CrudTable from '../components/organisms/CrudTable.vue';
-import { useEstadosList, useEliminarEstados } from '../../application/composables/useEstados';
 
-const { data, isLoading } = useEstadosList();
-const eliminar = useEliminarEstados();
+const page = ref(1);
 
-const handleAdd = () => alert('Abrir modal de creación para Estados');
-const handleEdit = (item: any) => alert('Abrir modal de edición para ' + item.id);
-const handleDelete = (item: any) => {
-  eliminar.mutate(item.id, {
-    onSuccess: () => alert('Registro eliminado'),
-    onError: (err: any) => alert('Error al eliminar: ' + err.message)
-  });
-};
+const { data, isLoading, error } = useEstadosList(page);
+const crear = useCrearEstado();
+const eliminar = useEliminarEstado();
+
+// ✅ Real: desempaca results
+const items = computed(() => data.value?.results ?? []);
+const total = computed(() => data.value?.count ?? 0);
+const hasNext = computed(() => data.value?.next !== null);
+const hasPrev = computed(() => data.value?.previous !== null);
+
+function nextPage() { if (hasNext.value) page.value++; }
+function prevPage() { if (hasPrev.value && page.value > 1) page.value--; }
 
 const columns = [
-    { key: 'id', label: 'ID' },
-    { key: 'nombre', label: 'NOMBRE' },
-    { key: 'descripcion', label: 'DESCRIPCION' },
-    { key: 'activo', label: 'ACTIVO' }
-  ];
+  { key: 'id', label: 'ID' },
+  { key: 'nombre', label: 'NOMBRE' },
+  { key: 'es_para_lf', label: 'ES PARA LF' },
+  { key: 'es_para_itse', label: 'ES PARA ITSE' },
+  { key: 'esta_activo', label: 'ACTIVO' }
+];
 
-const getDisplayData = () => {
-  if (data.value && data.value.length > 0) return data.value;
-  return [
-    { nombre: 'Dato 1', descripcion: 'Dato 2', activo: 'Dato 3', id: 1 },
-    { nombre: 'Dato 1', descripcion: 'Dato 2', activo: 'Dato 3', id: 2 }
-  ];
-};
+const handleAdd = () => alert('Abrir modal de creación');
+const handleEdit = (item: any) => alert('Abrir modal de edición');
+const handleDelete = (item: any) => eliminar.mutate(item.id);
 </script>
 
 <template>
@@ -36,12 +41,21 @@ const getDisplayData = () => {
       <h1 class="text-3xl font-bold text-gray-900 capitalize">Módulo de estados</h1>
       <p class="text-gray-500 mt-2">Gestión integral del dominio de Estados municipal.</p>
     </header>
-    
-    <CrudTable 
-      title="Listado de Registros"
+
+    <div v-if="error" class="p-6 text-center text-red-600 font-bold mb-4 bg-red-50 rounded-lg">
+      Error: {{ error.message }}
+    </div>
+
+    <CrudTable
+      title="Estados"
       :columns="columns"
-      :data="getDisplayData()"
+      :data="items"
       :is-loading="isLoading"
+      :total="total"
+      :has-next="hasNext"
+      :has-prev="hasPrev"
+      @next-page="nextPage"
+      @prev-page="prevPage"
       @add="handleAdd"
       @edit="handleEdit"
       @delete="handleDelete"

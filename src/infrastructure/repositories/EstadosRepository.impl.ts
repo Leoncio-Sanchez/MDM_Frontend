@@ -1,35 +1,30 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/infrastructure/repositories/EstadosRepository.impl.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
+import { httpClient } from '../http/axios.client';
+import type { PaginatedResponse } from '../../domain/types/PaginatedResponse';
 import type { EstadosRepositoryPort } from '../../domain/ports/EstadosRepository.port';
 import type { Estados } from '../../domain/entities/Estados.entity';
-import { httpClient } from '../http/axios.client';
 
 export class EstadosRepositoryImpl implements EstadosRepositoryPort {
   private readonly baseUrl = '/lf-itse/estados/';
 
-  async getAll(): Promise<Estados[]> {
-    const { data } = await httpClient.get(this.baseUrl);
+  async getAll(params?: { page?: number }): Promise<PaginatedResponse<Estados>> {
+    const { data } = await httpClient.get<PaginatedResponse<Estados>>(this.baseUrl, {
+      params: { page: params?.page ?? 1 },
+    });
     return data;
   }
 
   async getById(id: number): Promise<Estados> {
-    const { data } = await httpClient.get(`${this.baseUrl}${id}/`);
+    const { data } = await httpClient.get<Estados>(`${this.baseUrl}${id}/`);
     return data;
   }
 
   async create(payload: Omit<Estados, 'id'>): Promise<Estados> {
-    const { data } = await httpClient.post(this.baseUrl, payload);
+    const { data } = await httpClient.post<Estados>(this.baseUrl, payload);
     return data;
   }
 
   async update(id: number, payload: Partial<Estados>): Promise<Estados> {
-    const { data } = await httpClient.put(`${this.baseUrl}${id}/`, payload);
+    const { data } = await httpClient.put<Estados>(`${this.baseUrl}${id}/`, payload);
     return data;
   }
 

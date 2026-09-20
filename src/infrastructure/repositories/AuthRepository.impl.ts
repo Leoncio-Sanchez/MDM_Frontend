@@ -1,11 +1,3 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/infrastructure/repositories/AuthRepository.impl.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
 import type { AuthRepositoryPort } from '../../domain/ports/AuthRepository.port';
 import type { LoginCredentials } from '../../domain/entities/LoginCredentials.entity';
 import type { User } from '../../domain/entities/User.entity';
@@ -14,9 +6,7 @@ import { httpClient } from '../http/axios.client';
 export class AuthRepositoryImpl implements AuthRepositoryPort {
   async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
     const { data } = await httpClient.post('/auth/jwt/create/', credentials);
-    // Decode user info from the backend response or token (we sent username in backend)
-    // The backend actually sends: { access: token, refresh: token, role: user.role }
-    // To make it fully complete, we can parse the JWT payload
+    
     const token = data.access;
     const base64Url = token.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -25,12 +15,15 @@ export class AuthRepositoryImpl implements AuthRepositoryPort {
     }).join(''));
     const payload = JSON.parse(jsonPayload);
 
+    const username = payload.username ?? payload.sub ?? 'unknown';
+    const role = payload.role ?? 'unknown';
+
     return { 
       user: { 
-        id: payload.id, 
-        username: payload.username, 
-        role: payload.role, 
-        ruc: payload.ruc 
+        id: payload.id ?? payload.user_id, 
+        username: username, 
+        role: role, 
+        ruc: payload.ruc ?? null 
       }, 
       token: token 
     };

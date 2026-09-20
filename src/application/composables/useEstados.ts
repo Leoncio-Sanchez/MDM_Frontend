@@ -1,29 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import { ref, type Ref, computed } from 'vue';
 import { container } from '../../composition/container';
 import type { Estados } from '../../domain/entities/Estados.entity';
 
 const KEY = ['estados'] as const;
 
-/** Lista todos los estados */
-export function useEstadosList() {
+export function useEstadosList(page: Ref<number> = ref(1)) {
   return useQuery({
-    queryKey: KEY,
-    queryFn: () => container.estados.getAll(),
+    queryKey: [...KEY, page],
+    queryFn: () => container.estados.getAll({ page: page.value }),
     staleTime: 1000 * 60 * 5,
   });
 }
 
-/** Obtiene un estados por ID */
-export function useEstados(id: number | null) {
+export function useEstado(id: Ref<number | null>) {
   return useQuery({
     queryKey: [...KEY, id],
-    queryFn: () => container.estados.getById(id!),
-    enabled: id !== null && Number.isFinite(id),
+    queryFn: () => container.estados.getById(id.value!),
+    enabled: computed(() => id.value !== null && Number.isFinite(id.value)),
   });
 }
 
-/** Crea un estados */
-export function useCrearEstados() {
+export function useCrearEstado() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: Omit<Estados, 'id'>) => container.estados.create(data),
@@ -31,8 +29,7 @@ export function useCrearEstados() {
   });
 }
 
-/** Actualiza un estados */
-export function useActualizarEstados() {
+export function useActualizarEstado() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Estados> }) =>
@@ -41,8 +38,7 @@ export function useActualizarEstados() {
   });
 }
 
-/** Elimina un estados */
-export function useEliminarEstados() {
+export function useEliminarEstado() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => container.estados.delete(id),

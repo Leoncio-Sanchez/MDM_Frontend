@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: e2e_estados.spec.ts >> E2E: Login + Estados contra Laravel (datos reales de Neon) >> login exitoso y datos reales en Estados
-- Location: _validation/e2e_estados.spec.ts:4:3
+- Name: e2e_inspector.spec.ts >> E2E: Login + Estados contra Laravel (datos reales de Neon) >> login exitoso y datos reales en Estados
+- Location: _validation/e2e_inspector.spec.ts:4:3
 
 # Error details
 
@@ -34,7 +34,7 @@ waiting for navigation until "load"
         - textbox "Ingrese su usuario" [ref=e15]: inspector1
       - generic [ref=e16]:
         - generic [ref=e17]: Contraseña
-        - textbox "Ingrese su contraseña" [ref=e18]: inspector123
+        - textbox "Ingrese su contraseña" [ref=e18]: inspector1
       - button "Ingresar" [ref=e19]
 ```
 
@@ -60,11 +60,11 @@ waiting for navigation until "load"
   17 |     const passwordInput = page.locator('input[type="password"]').first();
   18 | 
   19 |     await usernameInput.fill('inspector1');
-  20 |     await passwordInput.fill('inspector123');
+  20 |     await passwordInput.fill('inspector1');
   21 |     await page.locator('button[type="submit"]').click();
   22 | 
   23 |     // 2. Esperar redirect al Panel Administrativo
-> 24 |     await page.waitForURL(/\/admin/, { timeout: 15000 });
+> 24 |     await page.waitForURL(/\/inspector1/, { timeout: 15000 });
      |                ^ TimeoutError: page.waitForURL: Timeout 15000ms exceeded.
   25 |     console.log('✅ Login exitoso — URL:', page.url());
   26 | 
@@ -73,10 +73,10 @@ waiting for navigation until "load"
   29 | 
   30 |     // 4. Click en el link de "Estados" en el menú (para hacer navegación SPA)
   31 |     // El AppLayout debe estar mostrando los links porque ahora el usuario es ADMIN_MUNICIPALIDAD
-  32 |     await page.locator('a[href="/admin/estados"]').click();
+  32 |     await page.locator('a[href="/inspector1/estados"]').click();
   33 |     
   34 |     // Esperar que la ruta cambie y Vue Query cargue los datos
-  35 |     await page.waitForURL(/\/admin\/estados/, { timeout: 10000 });
+  35 |     await page.waitForURL(/\/inspector1\/estados/, { timeout: 10000 });
   36 |     await page.waitForTimeout(3000);
   37 | 
   38 |     // 5. Screenshot de la página de Estados con datos reales

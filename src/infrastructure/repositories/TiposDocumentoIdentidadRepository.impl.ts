@@ -13,7 +13,7 @@ import type { TiposDocumentoIdentidad } from '../../domain/entities/TiposDocumen
 import { httpClient } from '../http/axios.client';
 
 export class TiposDocumentoIdentidadRepositoryImpl implements TiposDocumentoIdentidadRepositoryPort {
-  private readonly baseUrl = '/lf-itse/tipos-documento-identidad/';
+  private readonly baseUrl = '/lf-itse/tipos-documento-identidad';
 
   async getAll(): Promise<TiposDocumentoIdentidad[]> {
     const { data } = await httpClient.get(this.baseUrl);
@@ -21,7 +21,7 @@ export class TiposDocumentoIdentidadRepositoryImpl implements TiposDocumentoIden
   }
 
   async getById(id: number): Promise<TiposDocumentoIdentidad> {
-    const { data } = await httpClient.get(`${this.baseUrl}${id}/`);
+    const { data } = await httpClient.get(`${this.baseUrl}/${id}`);
     return data;
   }
 
@@ -31,11 +31,11 @@ export class TiposDocumentoIdentidadRepositoryImpl implements TiposDocumentoIden
   }
 
   async update(id: number, payload: Partial<TiposDocumentoIdentidad>): Promise<TiposDocumentoIdentidad> {
-    const { data } = await httpClient.put(`${this.baseUrl}${id}/`, payload);
+    const { data } = await httpClient.put(`${this.baseUrl}/${id}`, payload);
     return data;
   }
 
   async delete(id: number): Promise<void> {
-    await httpClient.delete(`${this.baseUrl}${id}/`);
+    await httpClient.delete(`${this.baseUrl}/${id}`);
   }
 }

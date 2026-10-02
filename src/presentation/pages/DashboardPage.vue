@@ -1,34 +1,146 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 
 const authStore = useAuthStore();
-const user = authStore.user;
+const user = computed(() => authStore.user);
+
+const todayFormatted = computed(() => {
+  return new Intl.DateTimeFormat('es-PE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date());
+});
+
+const roleLabel = computed(() => {
+  switch (user.value?.role) {
+    case 'ADMIN_MUNICIPALIDAD':
+      return 'Administrador Municipal';
+    case 'INSPECTOR':
+      return 'Inspector Técnico ITSE';
+    case 'CIUDADANO':
+      return 'Administrado / Ciudadano';
+    case 'EMPRESA':
+      return 'Representante Legal';
+    default:
+      return user.value?.role || 'Usuario';
+  }
+});
 </script>
 
 <template>
-  <div class="bg-gray-50 min-h-screen">
-    <header class="bg-white shadow-sm px-8 py-4 mb-8 flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-800">Bienvenido al Sistema ITSE</h1>
-        <p class="text-gray-500 mt-1">Has iniciado sesión como {{ user?.role }}</p>
+  <div class="space-y-6">
+    <!-- Banner de Bienvenida: Card White sobre Canvas #f4f4f4 -->
+    <div class="relative overflow-hidden rounded-2xl bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-neutral-800 p-6 sm:p-7 shadow-xs select-none transition-colors">
+      <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div class="space-y-2">
+          <!-- Tag / Badge institucional superior -->
+          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 text-[11px] font-bold text-[#0d6efd] dark:text-blue-400 tracking-wide uppercase shadow-2xs">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#0d6efd] dark:bg-blue-400"></span>
+            Plataforma Digital Municipal · LF & ITSE
+          </div>
+
+          <!-- Título con Negro Profundo y Azul Bootstrap Primary #0d6efd -->
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-neutral-900 dark:text-white leading-tight">
+            Bienvenido al Sistema <span class="text-[#0d6efd] dark:text-blue-400">MUNI_APP</span>
+          </h1>
+
+          <!-- Metadatos de sesión en chips claros -->
+          <div class="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 flex-wrap pt-0.5">
+            <span>Sesión activa como</span>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 font-mono text-xs font-semibold shadow-2xs">
+              {{ roleLabel }}
+            </span>
+            <span class="text-neutral-400 dark:text-neutral-600">·</span>
+            <span class="text-neutral-700 dark:text-neutral-300 font-medium font-mono text-xs">@{{ user?.username }}</span>
+          </div>
+        </div>
+
+        <!-- Indicadores de Estado y Fecha -->
+        <div class="flex items-center gap-3 shrink-0 flex-wrap">
+          <!-- Fecha del día -->
+          <div class="hidden sm:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-medium text-neutral-700 dark:text-neutral-300 shadow-2xs">
+            <svg class="w-4 h-4 text-[#0d6efd] dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span class="capitalize">{{ todayFormatted }}</span>
+          </div>
+
+          <!-- Badge de Servicios en Línea -->
+          <div class="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-xs font-semibold text-emerald-700 dark:text-emerald-400 shadow-2xs">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Servicios en línea</span>
+          </div>
+        </div>
       </div>
-    </header>
-    
-    <div class="px-8">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-          <h3 class="text-lg font-semibold text-gray-700">Expedientes Pendientes</h3>
-          <p class="text-3xl font-bold mt-2">24</p>
+    </div>
+
+    <!-- Tarjetas de Métricas: Cards con Iconos y Estados -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <!-- Trámites TUPA -->
+      <router-link 
+        to="/admin/expedientes" 
+        class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Trámites TUPA</span>
+          <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-neutral-800 text-[#0d6efd] dark:text-blue-400 shadow-2xs border border-blue-100 dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+          </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-          <h3 class="text-lg font-semibold text-gray-700">Inspecciones Hoy</h3>
-          <p class="text-3xl font-bold mt-2">8</p>
+        <p class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">24</p>
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
+          <span class="text-neutral-500 dark:text-neutral-400">Expedientes en trámite</span>
+          <span class="font-medium text-[#0d6efd] dark:text-blue-400 bg-blue-50 dark:bg-neutral-800 border border-blue-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver listado →</span>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
-          <h3 class="text-lg font-semibold text-gray-700">Licencias Emitidas</h3>
-          <p class="text-3xl font-bold mt-2">156</p>
+      </router-link>
+
+      <!-- Inspecciones ITSE -->
+      <router-link 
+        to="/admin/itse" 
+        class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Inspecciones ITSE</span>
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-neutral-800 text-emerald-600 dark:text-emerald-400 shadow-2xs border border-emerald-100 dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
         </div>
-      </div>
+        <p class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">8</p>
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
+          <span class="text-neutral-500 dark:text-neutral-400">Programadas para hoy</span>
+          <span class="font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-neutral-800 border border-emerald-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver agenda →</span>
+        </div>
+      </router-link>
+
+      <!-- Licencias Vigentes -->
+      <router-link 
+        to="/admin/licencias-funcionamiento" 
+        class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Licencias Vigentes</span>
+          <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-neutral-800 text-amber-600 dark:text-amber-400 shadow-2xs border border-amber-100 dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+        </div>
+        <p class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">156</p>
+        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
+          <span class="text-neutral-500 dark:text-neutral-400">Total emitidas</span>
+          <span class="font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-neutral-800 border border-amber-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver catálogo →</span>
+        </div>
+      </router-link>
     </div>
   </div>
 </template>

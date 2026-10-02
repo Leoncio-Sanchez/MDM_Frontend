@@ -13,15 +13,15 @@ import type { LicenciasFuncionamiento } from '../../domain/entities/LicenciasFun
 import { httpClient } from '../http/axios.client';
 
 export class LicenciasFuncionamientoRepositoryImpl implements LicenciasFuncionamientoRepositoryPort {
-  private readonly baseUrl = '/lf-itse/licencias-funcionamiento/';
+  private readonly baseUrl = '/lf-itse/licencias-funcionamiento';
 
   async getAll(): Promise<LicenciasFuncionamiento[]> {
-    const { data } = await httpClient.get(this.baseUrl);
+    const { data } = await httpClient.get(`${this.baseUrl}/consulta`);
     return data;
   }
 
   async getById(id: number): Promise<LicenciasFuncionamiento> {
-    const { data } = await httpClient.get(`${this.baseUrl}${id}/`);
+    const { data } = await httpClient.get(`${this.baseUrl}/${id}`);
     return data;
   }
 
@@ -31,11 +31,11 @@ export class LicenciasFuncionamientoRepositoryImpl implements LicenciasFuncionam
   }
 
   async update(id: number, payload: Partial<LicenciasFuncionamiento>): Promise<LicenciasFuncionamiento> {
-    const { data } = await httpClient.put(`${this.baseUrl}${id}/`, payload);
+    const { data } = await httpClient.put(`${this.baseUrl}/${id}`, payload);
     return data;
   }
 
   async delete(id: number): Promise<void> {
-    await httpClient.delete(`${this.baseUrl}${id}/`);
+    await httpClient.delete(`${this.baseUrl}/${id}`);
   }
 }

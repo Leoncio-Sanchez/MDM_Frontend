@@ -13,7 +13,7 @@ import type { Usuarios } from '../../domain/entities/Usuarios.entity';
 import { httpClient } from '../http/axios.client';
 
 export class UsuariosRepositoryImpl implements UsuariosRepositoryPort {
-  private readonly baseUrl = '/lf-itse/usuarios/';
+  private readonly baseUrl = '/lf-itse/usuarios';
 
   async getAll(): Promise<Usuarios[]> {
     const { data } = await httpClient.get(this.baseUrl);
@@ -21,7 +21,7 @@ export class UsuariosRepositoryImpl implements UsuariosRepositoryPort {
   }
 
   async getById(id: number): Promise<Usuarios> {
-    const { data } = await httpClient.get(`${this.baseUrl}${id}/`);
+    const { data } = await httpClient.get(`${this.baseUrl}/${id}`);
     return data;
   }
 
@@ -31,11 +31,11 @@ export class UsuariosRepositoryImpl implements UsuariosRepositoryPort {
   }
 
   async update(id: number, payload: Partial<Usuarios>): Promise<Usuarios> {
-    const { data } = await httpClient.put(`${this.baseUrl}${id}/`, payload);
+    const { data } = await httpClient.put(`${this.baseUrl}/${id}`, payload);
     return data;
   }
 
   async delete(id: number): Promise<void> {
-    await httpClient.delete(`${this.baseUrl}${id}/`);
+    await httpClient.delete(`${this.baseUrl}/${id}`);
   }
 }

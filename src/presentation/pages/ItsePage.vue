@@ -33,14 +33,9 @@ const getDisplayData = () => {
 </script>
 
 <template>
-  <div class="p-8">
-    <header class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 capitalize">Módulo de itse</h1>
-      <p class="text-gray-500 mt-2">Gestión integral del dominio de Itse municipal.</p>
-    </header>
-    
+  <div>
     <CrudTable 
-      title="Listado de Registros"
+      title="Control de Inspecciones Técnicas de Seguridad (ITSE)"
       :columns="columns"
       :data="getDisplayData()"
       :is-loading="isLoading"

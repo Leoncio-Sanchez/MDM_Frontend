@@ -1,81 +1,48 @@
 <script setup lang="ts">
-import { useLogout } from '../../../application/composables/useAuth';
-import { useAuthStore } from '../../../infrastructure/store/useAuthStore';
-import { useRouter } from 'vue-router';
+import { watch } from 'vue';
+import { useRoute } from 'vue-router';
+import { useUiStore } from '../../../infrastructure/store/useUiStore';
+import AppSidebar from '../organisms/AppSidebar.vue';
+import AppHeader from '../organisms/AppHeader.vue';
 
-const authStore = useAuthStore();
-const user = authStore.user;
-const logoutMutation = useLogout();
-const router = useRouter();
+const uiStore = useUiStore();
+const route = useRoute();
 
-const handleLogout = () => {
-  logoutMutation.mutate(undefined, {
-    onSuccess: () => {
-      router.push('/login');
-    }
-  });
-};
+// Al cambiar de ruta en dispositivos móviles, cerrar el sidebar automáticamente
+watch(() => route.path, () => {
+  uiStore.closeMobileSidebar();
+});
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-50 font-sans">
-    <!-- Sidebar - Recuperando el diseño original del bundle -->
-    <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-xl z-10">
-      <div class="p-5 border-b border-slate-800 flex items-center gap-3">
-        <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center font-bold shadow">LF</div>
-        <span class="font-bold text-lg tracking-wide">Sistema ITSE</span>
-      </div>
-      
-      <div class="p-4 bg-slate-800/50 border-b border-slate-800">
-        <p class="text-xs text-slate-400 uppercase tracking-wider font-bold mb-1">Usuario Conectado</p>
-        <p class="text-sm font-medium">{{ user?.username }}</p>
-        <p class="text-xs text-blue-400 mt-1">{{ user?.role }} {{ user?.ruc ? `(${user.ruc})` : '' }}</p>
-      </div>
+  <div class="flex h-screen bg-[#f4f4f4] dark:bg-[#111113] font-sans overflow-hidden transition-colors duration-200">
+    <!-- Backdrop Overlay para Móvil -->
+    <div 
+      v-if="uiStore.isMobileSidebarOpen" 
+      @click="uiStore.closeMobileSidebar()"
+      class="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+      aria-label="Cerrar menú móvil"
+    ></div>
 
-      <nav class="flex-1 overflow-y-auto p-4 space-y-1">
-        <!-- Menú dinámico basado en ROL para mantener el mismo diseño visual para todos -->
-        <template v-if="user?.role === 'CIUDADANO' || user?.role === 'EMPRESA'">
-          <a href="/ciudadano" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Mis Trámites LF / LC</a>
-        </template>
+    <!-- Sidebar: Drawer en Móvil, Estático/Colapsable en Desktop -->
+    <div 
+      :class="[
+        'fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 transition-transform duration-300 ease-in-out flex',
+        uiStore.isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      ]"
+    >
+      <AppSidebar />
+    </div>
 
-        <template v-if="user?.role === 'INSPECTOR'">
-          <a href="/inspector" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Hoja de Ruta (Inspecciones)</a>
-        </template>
+    <!-- Área Principal de la Aplicación (Cuerpo #f4f4f4 / Dark) -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f4f4f4] dark:bg-[#111113] transition-colors duration-200">
+      <!-- Topbar Global Reutilizable -->
+      <AppHeader />
 
-        <template v-if="user?.role === 'ADMIN_MUNICIPALIDAD'">
-          <router-link to="/admin" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Dashboard General</router-link>
-          <router-link to="/admin/expedientes" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Expedientes TUPA</router-link>
-          <router-link to="/admin/estados" class="block p-3 rounded-lg hover:bg-slate-800 text-sm font-medium text-slate-300 hover:text-white transition-all">Estados</router-link>
-        </template>
-      </nav>
-
-      <div class="p-4 border-t border-slate-800">
-        <button @click="handleLogout" class="w-full py-2.5 bg-slate-800 hover:bg-red-600/90 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
-          Cerrar Sesión
-        </button>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="flex-1 overflow-auto flex flex-col">
-      <!-- Topbar original del diseño -->
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-sm">
-        <h1 class="text-xl font-semibold text-gray-800 capitalize">
-          {{ user?.role === 'CIUDADANO' ? 'Portal del Ciudadano' : 
-           user?.role === 'INSPECTOR' ? 'Módulo de Inspección Técnica' : 
-           'Panel Administrativo' }}
-        </h1>
-        <div class="flex items-center gap-3">
-           <div class="w-8 h-8 rounded-full bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-bold text-sm">
-              {{ user?.username?.charAt(0).toUpperCase() }}
-           </div>
-        </div>
-      </header>
-      
-      <!-- Area de trabajo -->
-      <div class="p-8">
+      <!-- Contenedor Único de Vistas -->
+      <main class="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-[#f4f4f4] dark:bg-[#111113] transition-colors duration-200">
         <router-view />
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
 </template>

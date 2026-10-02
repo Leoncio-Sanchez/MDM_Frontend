@@ -18,6 +18,10 @@ export class AuthRepositoryImpl implements AuthRepositoryPort {
     const username = payload.username ?? payload.sub ?? 'unknown';
     const role = payload.role ?? 'unknown';
 
+    if (data.refresh) {
+      localStorage.setItem('auth-refresh-token', data.refresh);
+    }
+
     return { 
       user: { 
         id: payload.id ?? payload.user_id, 
@@ -31,6 +35,7 @@ export class AuthRepositoryImpl implements AuthRepositoryPort {
 
   async logout(): Promise<void> {
     localStorage.removeItem('auth-storage');
+    localStorage.removeItem('auth-refresh-token');
   }
 
   async getCurrentUser(): Promise<User | null> {

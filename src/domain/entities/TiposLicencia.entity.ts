@@ -1,12 +1,6 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/domain/entities/TiposLicencia.entity.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
 export interface TiposLicencia {
   id: number;
-  nombre?: string;
+  codigo: string;
+  nombre: string;
+  esta_activo: boolean;
 }

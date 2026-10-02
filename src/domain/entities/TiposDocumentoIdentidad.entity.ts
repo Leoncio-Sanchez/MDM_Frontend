@@ -1,12 +1,8 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/domain/entities/TiposDocumentoIdentidad.entity.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
 export interface TiposDocumentoIdentidad {
   id: number;
-  nombre?: string;
+  codigo: string;
+  nombre: string;
+  esta_activo: boolean;
+  es_para_natural: boolean;
+  es_para_juridica: boolean;
 }

@@ -68,27 +68,25 @@ export const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to) => {
   const authStore = useAuthStore();
   const isAuthenticated = !!authStore.token;
 
   if (!to.meta.public && !isAuthenticated) {
-    next({ name: 'login' });
-  } else if (to.meta.public && isAuthenticated) {
-    next({ name: 'root' });
-  } else {
-    if (to.meta.allowedRoles) {
-      // TODO(MIGRATION): During coexistence phase, Django users have 'admin'/'unknown' roles.
-      // Only block if user explicitly has a mismatched role. Allow access otherwise.
-      const roles = to.meta.allowedRoles as string[];
-      const userRole = authStore.user?.role ?? '';
-      const hasKnownRole = ['CIUDADANO', 'EMPRESA', 'INSPECTOR', 'ADMIN_MUNICIPALIDAD'].includes(userRole);
-      if (hasKnownRole && !roles.includes(userRole)) {
-        if (userRole === 'CIUDADANO' || userRole === 'EMPRESA') return next('/ciudadano');
-        if (userRole === 'INSPECTOR') return next('/inspector');
-        return next('/admin');
-      }
+    return { name: 'login' };
+  }
+  if (to.meta.public && isAuthenticated) {
+    return { name: 'root' };
+  }
+  if (to.meta.allowedRoles) {
+    // Solo bloquear si el usuario tiene un rol conocido y explícitamente no coincide
+    const roles = to.meta.allowedRoles as string[];
+    const userRole = authStore.user?.role ?? '';
+    const hasKnownRole = ['CIUDADANO', 'EMPRESA', 'INSPECTOR', 'ADMIN_MUNICIPALIDAD'].includes(userRole);
+    if (hasKnownRole && !roles.includes(userRole)) {
+      if (userRole === 'CIUDADANO' || userRole === 'EMPRESA') return '/ciudadano';
+      if (userRole === 'INSPECTOR') return '/inspector';
+      return '/admin';
     }
-    next();
   }
 });

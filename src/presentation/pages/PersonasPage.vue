@@ -33,14 +33,9 @@ const getDisplayData = () => {
 </script>
 
 <template>
-  <div class="p-8">
-    <header class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 capitalize">Módulo de personas</h1>
-      <p class="text-gray-500 mt-2">Gestión integral del dominio de Personas municipal.</p>
-    </header>
-    
+  <div>
     <CrudTable 
-      title="Listado de Registros"
+      title="Padrón General de Ciudadanos y Personas Jurídicas"
       :columns="columns"
       :data="getDisplayData()"
       :is-loading="isLoading"

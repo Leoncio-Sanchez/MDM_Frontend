@@ -13,15 +13,15 @@ import type { Itse } from '../../domain/entities/Itse.entity';
 import { httpClient } from '../http/axios.client';
 
 export class ItseRepositoryImpl implements ItseRepositoryPort {
-  private readonly baseUrl = '/lf-itse/itse/';
+  private readonly baseUrl = '/lf-itse/itse';
 
   async getAll(): Promise<Itse[]> {
-    const { data } = await httpClient.get(this.baseUrl);
+    const { data } = await httpClient.get(`${this.baseUrl}/consulta`);
     return data;
   }
 
   async getById(id: number): Promise<Itse> {
-    const { data } = await httpClient.get(`${this.baseUrl}${id}/`);
+    const { data } = await httpClient.get(`${this.baseUrl}/${id}`);
     return data;
   }
 
@@ -31,11 +31,11 @@ export class ItseRepositoryImpl implements ItseRepositoryPort {
   }
 
   async update(id: number, payload: Partial<Itse>): Promise<Itse> {
-    const { data } = await httpClient.put(`${this.baseUrl}${id}/`, payload);
+    const { data } = await httpClient.put(`${this.baseUrl}/${id}`, payload);
     return data;
   }
 
   async delete(id: number): Promise<void> {
-    await httpClient.delete(`${this.baseUrl}${id}/`);
+    await httpClient.delete(`${this.baseUrl}/${id}`);
   }
 }

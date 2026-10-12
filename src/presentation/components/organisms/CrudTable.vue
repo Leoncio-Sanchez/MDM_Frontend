@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Button from '../atoms/Button.vue';
+import Skeleton from '../atoms/Skeleton.vue';
 
 interface Column {
   key: string;
@@ -11,11 +12,21 @@ interface Props {
   columns: Column[];
   data: any[];
   isLoading?: boolean;
+  /** Texto del botón de borrado (p. ej. "Inactivar" en módulos que no eliminan registros) */
+  deleteLabel?: string;
+  /** Filas de esqueleto mientras carga */
+  skeletonRows?: number;
 }
 
 withDefaults(defineProps<Props>(), {
   isLoading: false,
+  deleteLabel: 'Eliminar',
+  skeletonRows: 5,
 });
+
+// Anchos variados para que el esqueleto parezca texto real y no una grilla uniforme
+const SKELETON_WIDTHS = ['w-10', 'w-24', 'w-32', 'w-20', 'w-40', 'w-16', 'w-28'];
+const skeletonWidth = (row: number, col: number) => SKELETON_WIDTHS[(row * 3 + col) % SKELETON_WIDTHS.length];
 
 const emit = defineEmits<{
   add: [];
@@ -32,7 +43,8 @@ const emit = defineEmits<{
     </div>
     
     <div class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
+      <span v-if="isLoading" role="status" class="sr-only">Cargando registros…</span>
+      <table :aria-busy="isLoading" class="min-w-full divide-y divide-neutral-200 dark:divide-neutral-800">
         <thead class="bg-neutral-100/75 dark:bg-neutral-800/60">
           <tr>
             <th v-for="col in columns" :key="col.key" class="px-6 py-3.5 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">
@@ -44,14 +56,19 @@ const emit = defineEmits<{
           </tr>
         </thead>
         <tbody class="bg-white dark:bg-[#18181b] divide-y divide-neutral-200 dark:divide-neutral-800/80 transition-colors">
-          <tr v-if="isLoading">
-            <td :colspan="columns.length + 1" class="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
-              <div class="flex items-center justify-center gap-2">
-                <span class="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>
-                <span>Cargando datos del servidor...</span>
-              </div>
-            </td>
-          </tr>
+          <template v-if="isLoading">
+            <tr v-for="r in skeletonRows" :key="`sk-${r}`">
+              <td v-for="(col, c) in columns" :key="col.key" class="px-6 py-4">
+                <Skeleton :class="['h-4', skeletonWidth(r, c)]" />
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex justify-end gap-4">
+                  <Skeleton class="h-4 w-10" />
+                  <Skeleton class="h-4 w-14" />
+                </div>
+              </td>
+            </tr>
+          </template>
           <tr v-else-if="data.length === 0">
             <td :colspan="columns.length + 1" class="px-6 py-12 text-center text-neutral-500 dark:text-neutral-400">
               No se encontraron registros en el catálogo.
@@ -72,7 +89,7 @@ const emit = defineEmits<{
                 @click="emit('delete', row)" 
                 class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-semibold hover:underline cursor-pointer"
               >
-                Eliminar
+                {{ deleteLabel }}
               </button>
             </td>
           </tr>

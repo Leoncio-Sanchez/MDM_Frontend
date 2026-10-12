@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
+import { useUiStore } from '../../infrastructure/store/useUiStore';
 
 const routes = [
   { 
@@ -90,3 +91,11 @@ router.beforeEach((to) => {
     }
   }
 });
+
+// Loader con el escudo: visible desde el arranque y al ingresar tras el login.
+// Se oculta cuando la ruta (y su componente, que se carga de forma diferida) ya está lista.
+router.beforeEach((to, from) => {
+  if (from.name === 'login' && !to.meta.public) useUiStore().showAppLoader();
+});
+router.afterEach(() => useUiStore().hideAppLoader());
+router.onError(() => useUiStore().hideAppLoader());

@@ -14,6 +14,7 @@ import { useZonificacionesList } from '../../application/composables/useZonifica
 import { useFormDraft } from '../../application/composables/useFormDraft';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
+import { useToast, useDialog } from '../../infrastructure/store/useNotificationStore';
 
 const { data, isLoading, error } = useLicenciasFuncionamientoList();
 const { data: tiposLicenciaData } = useTiposLicenciaList();
@@ -25,6 +26,8 @@ const { data: zonificacionesData } = useZonificacionesList();
 const crearLicencia = useCrearLicenciasFuncionamiento();
 const actualizarLicencia = useActualizarLicenciasFuncionamiento();
 const eliminar = useEliminarLicenciasFuncionamiento();
+const toast = useToast();
+const dialog = useDialog();
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
@@ -126,12 +129,13 @@ const handleEdit = (item: any) => {
   isModalOpen.value = true;
 };
 
-const handleDelete = (item: any) => {
-  if (confirm(`¿Está seguro de anular/eliminar la Licencia de Funcionamiento N° ${item.numero_licencia}?`)) {
-    eliminar.mutate(item.id, {
-      onError: (err: any) => alert('Error al eliminar: ' + (err?.response?.data?.message || err.message))
-    });
-  }
+const handleDelete = async (item: any) => {
+  const ok = await dialog.confirmDelete({
+    title: 'Confirmar eliminación',
+    text: `¿Está seguro de anular/eliminar la Licencia de Funcionamiento N° ${item.numero_licencia}?\nEsta acción no se puede deshacer.`,
+    onConfirm: () => eliminar.mutateAsync(item.id),
+  });
+  if (ok) toast.success('El registro se eliminó correctamente.');
 };
 
 const handleSubmit = () => {
@@ -194,6 +198,7 @@ const handleSubmit = () => {
         onSuccess: () => {
           clearDraft();
           isModalOpen.value = false;
+          toast.success('Los cambios se guardaron correctamente.');
         },
         onError: (err: any) => {
           formError.value = err?.response?.data?.message || err?.message || 'Error al actualizar la licencia';
@@ -207,6 +212,7 @@ const handleSubmit = () => {
         onSuccess: () => {
           clearDraft();
           isModalOpen.value = false;
+          toast.success('El registro se creó correctamente.');
         },
         onError: (err: any) => {
           formError.value = err?.response?.data?.message || err?.message || 'Error al emitir la licencia';
@@ -219,7 +225,7 @@ const handleSubmit = () => {
 
 <template>
   <div class="space-y-4">
-    <div v-if="error" class="p-4 text-center text-red-600 font-semibold mb-4 bg-red-50 border border-red-200 rounded-xl">
+    <div v-if="error" class="p-4 text-center text-red-600 dark:text-red-400 font-semibold mb-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl">
       Error al cargar licencias: {{ error.message }}
     </div>
 
@@ -247,7 +253,7 @@ const handleSubmit = () => {
       @discard-draft="clearDraft"
     >
       <!-- Alerta de Error de Validación -->
-      <div v-if="formError" class="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-xl flex items-center gap-2">
+      <div v-if="formError" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl flex items-center gap-2">
         <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -259,7 +265,7 @@ const handleSubmit = () => {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Número de Licencia -->
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               N° de Licencia <span v-if="!isEditMode" class="text-red-500">*</span>
             </label>
             <input
@@ -268,20 +274,20 @@ const handleSubmit = () => {
               placeholder="Ej. 1001, 2026001"
               :disabled="isEditMode"
               required
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white disabled:bg-neutral-100 disabled:cursor-not-allowed transition-all font-mono font-bold"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:cursor-not-allowed transition-all font-mono font-bold text-neutral-800 dark:text-neutral-200"
             />
-            <p v-if="isEditMode" class="text-[11px] text-neutral-400 mt-1">El número correlativo oficial de licencia es inmutable.</p>
+            <p v-if="isEditMode" class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">El número correlativo oficial de licencia es inmutable.</p>
           </div>
 
           <!-- Tipo de Licencia -->
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Tipo de Licencia <span class="text-red-500">*</span>
             </label>
             <select
               v-model="form.tipo_licencia_id"
               required
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             >
               <option value="" disabled>Seleccione tipo...</option>
               <option v-for="tl in tiposLicenciaOptions" :key="tl.id" :value="tl.id">
@@ -293,7 +299,7 @@ const handleSubmit = () => {
 
         <!-- Nombre Comercial -->
         <div>
-          <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+          <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
             Nombre Comercial o Razón Social <span class="text-red-500">*</span>
           </label>
           <input
@@ -301,7 +307,7 @@ const handleSubmit = () => {
             type="text"
             placeholder="Ej. BODEGA Y MINIMARKET SANTA ROSA"
             required
-            class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all uppercase font-medium"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all uppercase font-medium text-neutral-800 dark:text-neutral-200"
           />
         </div>
 
@@ -309,13 +315,13 @@ const handleSubmit = () => {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Expediente de Origen -->
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Expediente Municipal de Origen <span class="text-red-500">*</span>
             </label>
             <select
               v-model="form.expediente_id"
               required
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             >
               <option value="" disabled>Seleccione expediente...</option>
               <option v-for="exp in expedientesOptions" :key="exp.id" :value="exp.id">
@@ -326,13 +332,13 @@ const handleSubmit = () => {
 
           <!-- Titular / Administrado -->
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Titular / Administrado <span class="text-red-500">*</span>
             </label>
             <select
               v-model="form.titular_id"
               required
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             >
               <option value="" disabled>Seleccione titular...</option>
               <option v-for="p in personasOptions" :key="p.id" :value="p.id">
@@ -346,13 +352,13 @@ const handleSubmit = () => {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <!-- Nivel de Riesgo ITSE -->
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Nivel de Riesgo ITSE <span class="text-red-500">*</span>
             </label>
             <select
               v-model="form.nivel_riesgo_id"
               required
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             >
               <option value="" disabled>Seleccione nivel de riesgo...</option>
               <option v-for="nr in nivelesRiesgoOptions" :key="nr.id" :value="nr.id">
@@ -363,13 +369,13 @@ const handleSubmit = () => {
 
           <!-- Zonificación -->
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Zonificación Territorial <span class="text-red-500">*</span>
             </label>
             <select
               v-model="form.zonificacion_id"
               required
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             >
               <option value="" disabled>Seleccione zonificación...</option>
               <option v-for="z in zonificacionesOptions" :key="z.id" :value="z.id">
@@ -382,19 +388,19 @@ const handleSubmit = () => {
         <!-- Bloque 4: Datos del Establecimiento -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Dirección del Establecimiento
             </label>
             <input
               v-model="form.direccion"
               type="text"
               placeholder="Ej. Av. Nicolás de Piérola 450, Piso 1"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Área Ocupada (m²)
             </label>
             <input
@@ -402,7 +408,7 @@ const handleSubmit = () => {
               type="number"
               step="0.01"
               placeholder="Ej. 85.50"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all text-neutral-800 dark:text-neutral-200"
             />
           </div>
         </div>
@@ -410,53 +416,53 @@ const handleSubmit = () => {
         <!-- Bloque 5: Actividad y Recibo de Pago -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Giro o Actividad Económica Declarada
             </label>
             <input
               v-model="form.actividad"
               type="text"
               placeholder="Ej. VENTA DE ABARROTES Y PRODUCTOS ALIMENTICIOS"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all uppercase"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all uppercase text-neutral-800 dark:text-neutral-200"
             />
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               N° Recibo de Pago TUPA
             </label>
             <input
               v-model="form.numero_recibo_pago"
               type="text"
               placeholder="Ej. REC-2026-998"
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all font-mono"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all font-mono text-neutral-800 dark:text-neutral-200"
             />
           </div>
         </div>
 
         <!-- Vigencia y Observaciones -->
-        <div class="pt-2 border-t border-neutral-100 space-y-3">
-          <label class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 bg-[#f4f4f4]/60 hover:bg-[#f4f4f4] cursor-pointer transition-colors">
+        <div class="pt-2 border-t border-neutral-100 dark:border-neutral-800 space-y-3">
+          <label class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[#f4f4f4]/60 dark:bg-neutral-800/40 hover:bg-[#f4f4f4] dark:hover:bg-neutral-800 cursor-pointer transition-colors">
             <input
               v-model="form.es_vigencia_indeterminada"
               type="checkbox"
-              class="w-4 h-4 text-[#0d6efd] rounded border-neutral-300 focus:ring-blue-500"
+              class="w-4 h-4 text-[#0d6efd] rounded border-neutral-300 dark:border-neutral-700 focus:ring-blue-500"
             />
             <div>
-              <span class="text-xs font-semibold text-neutral-800 block">Vigencia Indeterminada (Ley Marco de Licencias N° 28976)</span>
-              <span class="text-[11px] text-neutral-500 block">La licencia no tiene fecha de caducidad temporal automática</span>
+              <span class="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">Vigencia Indeterminada (Ley Marco de Licencias N° 28976)</span>
+              <span class="text-[11px] text-neutral-500 dark:text-neutral-400 block">La licencia no tiene fecha de caducidad temporal automática</span>
             </div>
           </label>
 
           <div>
-            <label class="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
+            <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
               Observaciones del Trámite
             </label>
             <textarea
               v-model="form.observaciones"
               rows="2"
               placeholder="Anotaciones técnicas, condiciones especiales de operación o referencias..."
-              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white transition-all resize-none"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all resize-none text-neutral-800 dark:text-neutral-200"
             ></textarea>
           </div>
         </div>

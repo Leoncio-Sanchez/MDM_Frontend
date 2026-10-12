@@ -45,3 +45,12 @@ export function useEliminarEstado() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+/** Estados inactivos para ITSE (motivos de inactivación de un certificado) */
+export function useEstadosInactivosItse() {
+  return useQuery({
+    queryKey: [...KEY, 'inactivos-itse'],
+    queryFn: () => container.estados.getInactivosItse(),
+    staleTime: 1000 * 60 * 5,
+  });
+}

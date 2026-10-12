@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 
+// Alto aproximado del panel (buscador + lista) para decidir si abre hacia arriba o hacia abajo
+const PANEL_MAX = 340;
+const GAP = 6;
+
 export interface SelectOption {
   value: string | number;
   label: string;
@@ -33,6 +37,36 @@ const isOpen = ref(false);
 const searchQuery = ref('');
 const searchInput = ref<HTMLInputElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
+const dropdownRef = ref<HTMLDivElement | null>(null);
+
+// El panel se renderiza en <body> con position: fixed para que no lo recorte
+// un contenedor con scroll (p. ej. el cuerpo de un modal).
+const panelStyle = ref<Record<string, string>>({});
+const listMaxHeight = ref(240);
+const openUpwards = ref(false);
+
+const updatePosition = () => {
+  const trigger = containerRef.value;
+  if (!trigger) return;
+  const rect = trigger.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom - GAP - 8;
+  const spaceAbove = rect.top - GAP - 8;
+  openUpwards.value = spaceBelow < PANEL_MAX && spaceAbove > spaceBelow;
+  const available = openUpwards.value ? spaceAbove : spaceBelow;
+  // ~90px los ocupa la barra de búsqueda
+  listMaxHeight.value = Math.max(120, Math.min(240, available - 90));
+  panelStyle.value = {
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    ...(openUpwards.value
+      ? { bottom: `${window.innerHeight - rect.top + GAP}px` }
+      : { top: `${rect.bottom + GAP}px` }),
+  };
+};
+
+const onViewportChange = () => {
+  if (isOpen.value) updatePosition();
+};
 
 const selectedOption = computed(() => {
   return props.options.find((opt) => String(opt.value) === String(props.modelValue)) || null;
@@ -55,6 +89,7 @@ const toggleOpen = () => {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
   if (isOpen.value) {
+    updatePosition();
     searchQuery.value = '';
     nextTick(() => {
       searchInput.value?.focus();
@@ -74,13 +109,16 @@ const clearSelection = (e: MouseEvent) => {
 };
 
 const handleClickOutside = (e: MouseEvent) => {
-  if (containerRef.value && !containerRef.value.contains(e.target as Node)) {
+  const target = e.target as Node;
+  if (containerRef.value && !containerRef.value.contains(target) && !dropdownRef.value?.contains(target)) {
     isOpen.value = false;
   }
 };
 
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Escape' && isOpen.value) {
+    // Que Escape solo cierre la lista y no llegue al modal (que vibraría)
+    e.stopPropagation();
     isOpen.value = false;
   }
 };
@@ -88,11 +126,16 @@ const handleKeyDown = (e: KeyboardEvent) => {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('resize', onViewportChange);
+  // capture: true para enterarse del scroll de cualquier contenedor (el cuerpo del modal)
+  window.addEventListener('scroll', onViewportChange, true);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('resize', onViewportChange);
+  window.removeEventListener('scroll', onViewportChange, true);
 });
 </script>
 
@@ -168,12 +211,18 @@ onUnmounted(() => {
     </div>
 
     <!-- Dropdown Flotante con Buscador Integrado -->
+    <teleport to="body">
     <div
       v-if="isOpen"
-      class="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white dark:bg-[#18181b] rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      ref="dropdownRef"
+      :style="panelStyle"
+      :class="[
+        'fixed z-[75] bg-white dark:bg-[#18181b] rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 overflow-hidden font-sans flex',
+        openUpwards ? 'flex-col-reverse' : 'flex-col',
+      ]"
     >
       <!-- Barra de Búsqueda -->
-      <div class="p-2.5 bg-[#f8f9fa] dark:bg-[#202024] border-b border-neutral-200 dark:border-neutral-800">
+      <div :class="['p-2.5 bg-[#f8f9fa] dark:bg-[#202024] border-neutral-200 dark:border-neutral-800', openUpwards ? 'border-t' : 'border-b']">
         <div class="relative flex items-center">
           <svg class="w-4 h-4 text-neutral-400 absolute left-3 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -193,7 +242,7 @@ onUnmounted(() => {
       </div>
 
       <!-- Lista de Opciones con Scroll Suave -->
-      <div class="max-h-60 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800/60 p-1">
+      <div class="overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800/60 p-1" :style="{ maxHeight: `${listMaxHeight}px` }">
         <div
           v-if="filteredOptions.length === 0"
           class="p-6 text-center text-xs text-neutral-400 dark:text-neutral-500"
@@ -268,5 +317,6 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
+    </teleport>
   </div>
 </template>

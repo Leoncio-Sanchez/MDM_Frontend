@@ -62,6 +62,25 @@ export const useUiStore = defineStore('ui', () => {
     isDarkMode.value = !isDarkMode.value;
   }
 
+  // ── Loader de pantalla completa (arranque de la app e ingreso tras el login) ──
+  // Visible desde el primer render: cubre la carga inicial hasta que el router resuelve la ruta.
+  const isAppLoading = ref(true);
+  const MIN_LOADER_MS = 600; // evita un parpadeo si la carga es casi instantánea
+  let loaderShownAt = typeof performance !== 'undefined' ? performance.now() : 0;
+  let hideTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function showAppLoader() {
+    clearTimeout(hideTimer);
+    loaderShownAt = performance.now();
+    isAppLoading.value = true;
+  }
+
+  function hideAppLoader() {
+    clearTimeout(hideTimer);
+    const restante = Math.max(0, MIN_LOADER_MS - (performance.now() - loaderShownAt));
+    hideTimer = setTimeout(() => (isAppLoading.value = false), restante);
+  }
+
   return {
     isSidebarCollapsed,
     isMobileSidebarOpen,
@@ -69,5 +88,8 @@ export const useUiStore = defineStore('ui', () => {
     toggleSidebar,
     closeMobileSidebar,
     toggleTheme,
+    isAppLoading,
+    showAppLoader,
+    hideAppLoader,
   };
 });

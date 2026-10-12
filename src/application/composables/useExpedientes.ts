@@ -49,3 +49,13 @@ export function useEliminarExpedientes() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+/** Expedientes en trámite: con licencia y/o ITSE aún no emitidos */
+export function useExpedientesPendientes() {
+  return useQuery({
+    queryKey: [...KEY, 'pendientes'],
+    queryFn: () => container.expedientes.getPendientes(),
+    // Sin caché: cambia al emitir licencias o ITSE desde otras pantallas
+    staleTime: 0,
+  });
+}

@@ -9,7 +9,7 @@
  */
 
 import type { ExpedientesRepositoryPort } from '../../domain/ports/ExpedientesRepository.port';
-import type { Expedientes } from '../../domain/entities/Expedientes.entity';
+import type { Expedientes, ExpedientePendiente } from '../../domain/entities/Expedientes.entity';
 import { httpClient } from '../http/axios.client';
 
 export class ExpedientesRepositoryImpl implements ExpedientesRepositoryPort {
@@ -37,5 +37,10 @@ export class ExpedientesRepositoryImpl implements ExpedientesRepositoryPort {
 
   async delete(id: number): Promise<void> {
     await httpClient.delete(`${this.baseUrl}${id}/`);
+  }
+
+  async getPendientes(): Promise<ExpedientePendiente[]> {
+    const { data } = await httpClient.get(`${this.baseUrl}pendientes/`);
+    return data;
   }
 }

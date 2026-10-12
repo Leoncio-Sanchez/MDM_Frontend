@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
+import { useToast } from '../../infrastructure/store/useNotificationStore';
 import Button from '../components/atoms/Button.vue';
 import Input from '../components/atoms/Input.vue';
 
@@ -22,28 +23,24 @@ onMounted(() => {
   loadData();
 });
 
+// TODO: portal ciudadano aún no conectado a la API (ver _docs/CHECKLIST_PENDIENTES.md).
+// Mientras tanto se avisa al usuario en lugar de simular que la acción se completó.
+const toast = useToast();
+const avisoPendiente = (accion: string) =>
+  toast.info(`${accion}: esta función todavía no está conectada al sistema.`, 'En construcción');
+
 const solicitarLF = async (e: Event) => {
   e.preventDefault();
-  try {
-    alert('Expediente LF ingresado. Proceda al pago.');
-    loadData();
-  } catch (err: any) {
-    alert(err.response?.data?.error || 'Error al solicitar LF');
-  }
+  avisoPendiente('Solicitud de Licencia de Funcionamiento');
 };
 
 const pagarLF = async (_id: number) => {
-  alert('Pago realizado. Esperando asignación de inspector.');
-  loadData();
+  avisoPendiente('Pago de expediente');
 };
 
 const solicitarLC = async (e: Event) => {
   e.preventDefault();
-  try {
-    alert('Expediente de Construcción ingresado. Planos y dimensiones subidos.');
-  } catch (err: any) {
-    alert('Error');
-  }
+  avisoPendiente('Solicitud de Licencia de Construcción');
 };
 </script>
 

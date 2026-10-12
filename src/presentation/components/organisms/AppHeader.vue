@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../../infrastructure/store/useAuthStore';
 import { useUiStore } from '../../../infrastructure/store/useUiStore';
 import { useLogout } from '../../../application/composables/useAuth';
+import ModalShell from '../molecules/ModalShell.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -162,18 +163,8 @@ const confirmLogout = () => {
   </header>
 
   <!-- Modal de Alerta de Seguridad para Cerrar Sesión -->
-  <teleport to="body">
-    <div 
-      v-if="isLogoutModalOpen" 
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-xs select-none transition-all"
-      @click.self="cancelLogout"
-    >
-      <div 
-        class="bg-white dark:bg-neutral-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 transform transition-all animate-in fade-in zoom-in-95 duration-150"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-headline"
-      >
+  <ModalShell :open="isLogoutModalOpen" max-width="max-w-sm" layer="dialog" labelledby="modal-headline">
+      <div class="bg-white dark:bg-neutral-900 rounded-2xl w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 select-none">
         <!-- Icono de Seguridad / Alerta -->
         <div class="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4 shadow-2xs">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -211,6 +202,5 @@ const confirmLogout = () => {
           </button>
         </div>
       </div>
-    </div>
-  </teleport>
+  </ModalShell>
 </template>

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { Personas } from '../../domain/entities/Personas.entity';
+import type { PersonaPayload } from '../../domain/entities/Personas.entity';
 
 const KEY = ['personas'] as const;
 
@@ -26,7 +26,7 @@ export function usePersonas(id: number | null) {
 export function useCrearPersonas() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<Personas, 'id'>) => container.personas.create(data),
+    mutationFn: (data: PersonaPayload) => container.personas.create(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -35,7 +35,7 @@ export function useCrearPersonas() {
 export function useActualizarPersonas() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<Personas> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<PersonaPayload> }) =>
       container.personas.update(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
@@ -47,5 +47,14 @@ export function useEliminarPersonas() {
   return useMutation({
     mutationFn: (id: number) => container.personas.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/** Catálogo de sexos (M / F / X) */
+export function usePersonasSexos() {
+  return useQuery({
+    queryKey: [...KEY, 'sexos'],
+    queryFn: () => container.personas.getSexos(),
+    staleTime: Infinity,
   });
 }

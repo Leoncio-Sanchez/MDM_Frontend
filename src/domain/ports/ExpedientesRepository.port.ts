@@ -6,7 +6,7 @@
  * @method Ruta A — Golden Source Validado
  */
 
-import type { Expedientes } from '../entities/Expedientes.entity';
+import type { Expedientes, ExpedientePendiente } from '../entities/Expedientes.entity';
 
 export interface ExpedientesRepositoryPort {
   getAll(): Promise<Expedientes[]>;
@@ -14,4 +14,5 @@ export interface ExpedientesRepositoryPort {
   create(data: Omit<Expedientes, 'id'>): Promise<Expedientes>;
   update(id: number, data: Partial<Expedientes>): Promise<Expedientes>;
   delete(id: number): Promise<void>;
+  getPendientes(): Promise<ExpedientePendiente[]>;
 }

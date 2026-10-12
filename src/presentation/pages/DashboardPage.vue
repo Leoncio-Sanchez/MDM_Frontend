@@ -1,9 +1,50 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
+import Skeleton from '../components/atoms/Skeleton.vue';
+import { useExpedientesPendientes } from '../../application/composables/useExpedientes';
+import { useItseList } from '../../application/composables/useItse';
+import { useLicenciasFuncionamientoList } from '../../application/composables/useLicenciasFuncionamiento';
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
+
+// ── Indicadores (datos reales de la API) ────────────────────────────
+const DIAS_ALERTA_ITSE = 30;
+
+const { data: pendientesData, isLoading: cargandoPendientes, isError: errorPendientes } = useExpedientesPendientes();
+const { data: itseData, isLoading: cargandoItse, isError: errorItse } = useItseList();
+const { data: licenciasData, isLoading: cargandoLicencias, isError: errorLicencias } = useLicenciasFuncionamientoList();
+
+const listOf = <T,>(value: unknown): T[] => (Array.isArray(value) ? value : (value as any)?.results ?? []);
+
+const hoyISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const tramites = computed(() => {
+  const pendientes = listOf<{ mostrar_alerta: boolean }>(pendientesData.value);
+  return { total: pendientes.length, porVencer: pendientes.filter((p) => p.mostrar_alerta).length };
+});
+
+const itse = computed(() => {
+  const hoy = hoyISO();
+  const limite = new Date();
+  limite.setDate(limite.getDate() + DIAS_ALERTA_ITSE);
+  const vigentes = listOf<{ fecha_caducidad: string; historial_estados?: unknown[] }>(itseData.value).filter(
+    (i) => !i.historial_estados?.length && i.fecha_caducidad >= hoy,
+  );
+  return { vigentes: vigentes.length, porVencer: vigentes.filter((i) => new Date(i.fecha_caducidad) <= limite).length };
+});
+
+const licencias = computed(() => {
+  const todas = listOf<{ historial_estados?: unknown[] }>(licenciasData.value);
+  return { emitidas: todas.length, vigentes: todas.filter((l) => !l.historial_estados?.length).length };
+});
+
+/** Valor de la tarjeta; "—" si falló la consulta (mientras carga se muestra un skeleton) */
+const valor = (error: boolean, n: number) => (error ? '—' : String(n));
 
 const todayFormatted = computed(() => {
   return new Intl.DateTimeFormat('es-PE', {
@@ -81,7 +122,7 @@ const roleLabel = computed(() => {
     </div>
 
     <!-- Tarjetas de Métricas: Cards con Iconos y Estados -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5" :aria-busy="cargandoPendientes || cargandoItse || cargandoLicencias">
       <!-- Trámites TUPA -->
       <router-link 
         to="/admin/expedientes" 
@@ -95,9 +136,14 @@ const roleLabel = computed(() => {
             </svg>
           </div>
         </div>
-        <p class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">24</p>
+        <Skeleton v-if="cargandoPendientes" class="h-9 w-16 mt-4" rounded="lg" />
+        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(errorPendientes, tramites.total) }}</p>
         <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-          <span class="text-neutral-500 dark:text-neutral-400">Expedientes en trámite</span>
+          <Skeleton v-if="cargandoPendientes" class="h-3 w-32" />
+          <span v-else class="text-neutral-500 dark:text-neutral-400">
+            Expedientes en trámite
+            <span v-if="tramites.porVencer" class="text-amber-600 dark:text-amber-400 font-semibold">· {{ tramites.porVencer }} por vencer</span>
+          </span>
           <span class="font-medium text-[#0d6efd] dark:text-blue-400 bg-blue-50 dark:bg-neutral-800 border border-blue-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver listado →</span>
         </div>
       </router-link>
@@ -115,10 +161,15 @@ const roleLabel = computed(() => {
             </svg>
           </div>
         </div>
-        <p class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">8</p>
+        <Skeleton v-if="cargandoItse" class="h-9 w-16 mt-4" rounded="lg" />
+        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(errorItse, itse.vigentes) }}</p>
         <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-          <span class="text-neutral-500 dark:text-neutral-400">Programadas para hoy</span>
-          <span class="font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-neutral-800 border border-emerald-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver agenda →</span>
+          <Skeleton v-if="cargandoItse" class="h-3 w-32" />
+          <span v-else class="text-neutral-500 dark:text-neutral-400">
+            Certificados vigentes
+            <span v-if="itse.porVencer" class="text-amber-600 dark:text-amber-400 font-semibold">· {{ itse.porVencer }} por vencer</span>
+          </span>
+          <span class="font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-neutral-800 border border-emerald-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver listado →</span>
         </div>
       </router-link>
 
@@ -135,9 +186,11 @@ const roleLabel = computed(() => {
             </svg>
           </div>
         </div>
-        <p class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">156</p>
+        <Skeleton v-if="cargandoLicencias" class="h-9 w-16 mt-4" rounded="lg" />
+        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(errorLicencias, licencias.vigentes) }}</p>
         <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-          <span class="text-neutral-500 dark:text-neutral-400">Total emitidas</span>
+          <Skeleton v-if="cargandoLicencias" class="h-3 w-32" />
+          <span v-else class="text-neutral-500 dark:text-neutral-400">De {{ licencias.emitidas }} emitidas en total</span>
           <span class="font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-neutral-800 border border-amber-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver catálogo →</span>
         </div>
       </router-link>

@@ -31,4 +31,9 @@ export class EstadosRepositoryImpl implements EstadosRepositoryPort {
   async delete(id: number): Promise<void> {
     await httpClient.delete(`${this.baseUrl}${id}/`);
   }
+
+  async getInactivosItse(): Promise<Estados[]> {
+    const { data } = await httpClient.get<Estados[]>(`${this.baseUrl}inactivos-itse/`);
+    return data;
+  }
 }

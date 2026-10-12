@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import ModalShell from './ModalShell.vue';
 
 interface Props {
   modelValue: boolean;
@@ -26,47 +26,25 @@ const emit = defineEmits<{
   (e: 'discard-draft'): void;
 }>();
 
+// Solo se cierra con la X o con "Cancelar": clic fuera o Escape hacen vibrar el modal (ModalShell).
 const close = () => {
   if (!props.isLoading) {
     emit('update:modelValue', false);
   }
 };
 
-const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape' && props.modelValue) {
-    close();
-  }
-};
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown);
-});
 </script>
 
 <template>
-  <teleport to="body">
-    <div 
-      v-if="modelValue" 
-      class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-neutral-900/60 backdrop-blur-xs overflow-y-auto select-none font-sans"
-      @click.self="close"
-    >
-      <div 
-        :class="[
-          maxWidth,
-          'relative w-full bg-white dark:bg-[#18181b] rounded-3xl shadow-2xl border border-neutral-200/90 dark:border-neutral-800 my-auto flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 transition-colors'
-        ]"
-        role="dialog"
-        aria-modal="true"
+  <ModalShell :open="modelValue" :max-width="maxWidth" labelledby="large-modal-title">
+      <div
+        class="relative w-full bg-white dark:bg-[#18181b] rounded-3xl shadow-2xl border border-neutral-200/90 dark:border-neutral-800 flex flex-col overflow-hidden transition-colors select-none"
       >
         <!-- Cabecera del Modal (#f4f4f4 con separador sutil) -->
         <div class="px-6 py-4 bg-[#f4f4f4] dark:bg-[#202024] border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between shrink-0 transition-colors">
           <div class="space-y-0.5">
             <div class="flex items-center gap-2.5">
-              <h3 class="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">
+              <h3 id="large-modal-title" class="text-lg font-bold text-neutral-900 dark:text-white tracking-tight">
                 {{ title }}
               </h3>
 
@@ -153,6 +131,5 @@ onUnmounted(() => {
           </div>
         </form>
       </div>
-    </div>
-  </teleport>
+  </ModalShell>
 </template>

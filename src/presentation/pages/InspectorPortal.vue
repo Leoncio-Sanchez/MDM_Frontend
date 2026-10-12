@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import Button from '../components/atoms/Button.vue';
+import { useToast } from '../../infrastructure/store/useNotificationStore';
 
 const expedientes = ref<any[]>([]);
 
@@ -15,9 +16,11 @@ onMounted(() => {
   loadData();
 });
 
+// TODO: portal inspector aún no conectado a la API (ver _docs/CHECKLIST_PENDIENTES.md).
+const toast = useToast();
+
 const inspeccionar = async (_id: number, _resultado: string) => {
-  alert(`Inspección guardada: ${_resultado}`);
-  loadData();
+  toast.info('Registrar el resultado de la inspección todavía no está conectado al sistema.', 'En construcción');
 };
 </script>
 

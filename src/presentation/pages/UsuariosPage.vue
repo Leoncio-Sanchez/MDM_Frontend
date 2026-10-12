@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
+import ModalShell from '../components/molecules/ModalShell.vue';
 import {
   useUsuariosList,
   useCrearUsuarios,
@@ -10,11 +11,13 @@ import {
 } from '../../application/composables/useUsuarios';
 import { useFormDraft } from '../../application/composables/useFormDraft';
 import { httpClient } from '../../infrastructure/http/axios.client';
+import { useToast, extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
 
 const { data, isLoading } = useUsuariosList();
 const crear = useCrearUsuarios();
 const actualizar = useActualizarUsuarios();
 const eliminar = useEliminarUsuarios();
+const toast = useToast();
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
@@ -143,11 +146,12 @@ const confirmDelete = () => {
 
   eliminar.mutate(userToDelete.value.id, {
     onSuccess: () => {
+      toast.success(`El usuario @${userToDelete.value?.username} fue desactivado.`);
       isDeleteModalOpen.value = false;
       userToDelete.value = null;
     },
     onError: (err: any) => {
-      alert('Error al desactivar usuario: ' + (err?.response?.data?.message || err.message));
+      toast.error(extractErrorMessage(err), 'No se pudo desactivar el usuario');
     }
   });
 };
@@ -200,6 +204,7 @@ const handleSubmit = async () => {
 
     crear.mutate(payload, {
       onSuccess: () => {
+        toast.success('El usuario se creó correctamente.');
         clearDraft();
         isModalOpen.value = false;
       },
@@ -219,9 +224,16 @@ const handleSubmit = async () => {
                 password_confirm: form.value.password_confirm,
               });
             } catch (pErr: any) {
-              alert('Datos guardados, pero ocurrió un error al actualizar la contraseña: ' + (pErr?.response?.data?.error || pErr.message));
+              toast.warning(
+                'Los datos se guardaron, pero la contraseña no se pudo actualizar: ' + extractErrorMessage(pErr),
+                'Guardado parcial',
+              );
+              clearDraft();
+              isModalOpen.value = false;
+              return;
             }
           }
+          toast.success('Los cambios se guardaron correctamente.');
           clearDraft();
           isModalOpen.value = false;
         },
@@ -293,7 +305,7 @@ const handleSubmit = async () => {
               placeholder="Ej. jrodriguez"
               class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 disabled:opacity-60 disabled:bg-neutral-100 dark:disabled:bg-neutral-800 transition-all font-mono"
             />
-            <p v-if="isEditMode" class="text-[11px] text-neutral-400 mt-1">El username es único e inmutable.</p>
+            <p v-if="isEditMode" class="text-[11px] text-neutral-400 dark:text-neutral-500 mt-1">El username es único e inmutable.</p>
           </div>
 
           <!-- Correo Electrónico -->
@@ -533,13 +545,8 @@ const handleSubmit = async () => {
     </LargeModal>
 
     <!-- Modal de Confirmación para Desactivar / Eliminar Usuario -->
-    <teleport to="body">
-      <div 
-        v-if="isDeleteModalOpen" 
-        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs select-none font-sans"
-        @click.self="isDeleteModalOpen = false"
-      >
-        <div class="relative w-full max-w-md bg-white dark:bg-[#18181b] rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+    <ModalShell :open="isDeleteModalOpen" max-width="max-w-md" layer="dialog" labelledby="delete-user-title">
+      <div class="relative w-full bg-white dark:bg-[#18181b] rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4 select-none">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 flex items-center justify-center text-red-600 shrink-0">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -547,7 +554,7 @@ const handleSubmit = async () => {
               </svg>
             </div>
             <div>
-              <h3 class="text-base font-bold text-neutral-900 dark:text-white">Desactivar Usuario</h3>
+              <h3 id="delete-user-title" class="text-base font-bold text-neutral-900 dark:text-white">Desactivar Usuario</h3>
               <p class="text-xs text-neutral-500 dark:text-neutral-400">Confirmación de seguridad</p>
             </div>
           </div>
@@ -577,7 +584,6 @@ const handleSubmit = async () => {
             </button>
           </div>
         </div>
-      </div>
-    </teleport>
+  </ModalShell>
   </div>
 </template>

@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
+import { useToast, useDialog } from '../../infrastructure/store/useNotificationStore';
 import SearchableSelect, { type SelectOption } from '../components/molecules/SearchableSelect.vue';
 import {
   useExpedientesList,
@@ -20,13 +21,17 @@ const { data: personasList } = usePersonasList();
 const crear = useCrearExpedientes();
 const actualizar = useActualizarExpedientes();
 const eliminar = useEliminarExpedientes();
+const toast = useToast();
+const dialog = useDialog();
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
 const editingId = ref<number | null>(null);
 const formError = ref<string | null>(null);
 
-const today = new Date().toISOString().split('T')[0];
+// Fecha local (no UTC): con toISOString(), después de las 19:00 en Lima se sugería el día siguiente
+const hoy = new Date();
+const today = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
 const { form, hasDraft, clearDraft, setFormData, loadDraft } = useFormDraft({
   key: 'expediente',
@@ -45,10 +50,10 @@ const isSubmitting = computed(() => crear.isPending.value || actualizar.isPendin
 const columns = [
   { key: 'id', label: 'ID' },
   { key: 'numero_expediente', label: 'N° EXPEDIENTE' },
-  { key: 'fecha_recepcion', label: 'FECHA RECEPCIÓN' },
+  { key: 'fecha_recepcion_texto', label: 'FECHA RECEPCIÓN' },
   { key: 'fecha_vencimiento', label: 'FECHA VENCIMIENTO' },
-  { key: 'tipo_procedimiento_tupa', label: 'PROCEDIMIENTO TUPA' },
-  { key: 'solicitante', label: 'SOLICITANTE' }
+  { key: 'procedimiento_texto', label: 'PROCEDIMIENTO TUPA' },
+  { key: 'solicitante_texto', label: 'SOLICITANTE' }
 ];
 
 const expedientes = computed(() => {
@@ -87,6 +92,29 @@ const personasSelectOptions = computed<SelectOption[]>(() => {
   });
 });
 
+const tupaById = computed(() => new Map(tupaOptions.value.map((t: any) => [t.id, t])));
+const personasById = computed(() => new Map(personasOptions.value.map((p: any) => [p.id, p])));
+
+const nombrePersona = (p: any) =>
+  p.tipo_persona === 'J' ? p.nombres : [p.nombres, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' ');
+
+/** Filas de la tabla: se conservan los campos originales (los usa Editar) y se agregan textos legibles. */
+const filasTabla = computed(() =>
+  expedientes.value.map((e: any) => {
+    const tupaId = e.tipo_procedimiento_tupa ?? e.tipo_procedimiento_tupa_id;
+    const tupa: any = tupaById.value.get(tupaId);
+    const solicitanteId = e.solicitante ?? e.solicitante_id;
+    const persona = personasById.value.get(solicitanteId);
+    return {
+      ...e,
+      // "2026-10-12T00:00:00-05:00" -> "2026-10-12"
+      fecha_recepcion_texto: e.fecha_recepcion ? String(e.fecha_recepcion).split('T')[0] : '',
+      procedimiento_texto: tupa ? `${tupa.codigo} · ${tupa.nombre}` : tupaId ? `#${tupaId}` : '',
+      solicitante_texto: persona ? nombrePersona(persona) : solicitanteId ? `#${solicitanteId}` : '',
+    };
+  }),
+);
+
 const handleAdd = () => {
   isEditMode.value = false;
   editingId.value = null;
@@ -116,12 +144,13 @@ const handleEdit = (item: any) => {
   isModalOpen.value = true;
 };
 
-const handleDelete = (item: any) => {
-  if (confirm(`¿Está seguro de eliminar el Expediente #${item.numero_expediente || item.id}?`)) {
-    eliminar.mutate(item.id, {
-      onError: (err: any) => alert('Error al eliminar: ' + (err?.response?.data?.message || err.message))
-    });
-  }
+const handleDelete = async (item: any) => {
+  const ok = await dialog.confirmDelete({
+    title: 'Confirmar eliminación',
+    text: `¿Está seguro de eliminar el Expediente #${item.numero_expediente || item.id}?\nEsta acción no se puede deshacer.`,
+    onConfirm: () => eliminar.mutateAsync(item.id),
+  });
+  if (ok) toast.success('El registro se eliminó correctamente.');
 };
 
 const handleSubmit = () => {
@@ -162,6 +191,7 @@ const handleSubmit = () => {
         onSuccess: () => {
           clearDraft();
           isModalOpen.value = false;
+          toast.success('Los cambios se guardaron correctamente.');
         },
         onError: (err: any) => {
           formError.value = err?.response?.data?.message || err?.message || 'Error al actualizar expediente';
@@ -173,6 +203,7 @@ const handleSubmit = () => {
       onSuccess: () => {
         clearDraft();
         isModalOpen.value = false;
+        toast.success('El registro se creó correctamente.');
       },
       onError: (err: any) => {
         formError.value = err?.response?.data?.message || err?.message || 'Error al registrar expediente';
@@ -187,7 +218,7 @@ const handleSubmit = () => {
     <CrudTable 
       title="Listado de Expedientes TUPA"
       :columns="columns"
-      :data="expedientes"
+      :data="filasTabla"
       :is-loading="isLoading"
       @add="handleAdd"
       @edit="handleEdit"

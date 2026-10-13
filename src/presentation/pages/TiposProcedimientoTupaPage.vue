@@ -80,7 +80,7 @@ const displayData = computed(() =>
       codigo: p.codigo,
       nombre: p.nombre,
       unidad: unidad?.sigla || unidad?.nombre || `#${p.unidad_organica}`,
-      plazo: `${p.plazo_atencion_dias} días hábiles`,
+      plazo: p.plazo_atencion_dias === 0 ? 'Inmediato' : `${p.plazo_atencion_dias} días hábiles`,
       alerta: p.dias_alerta_vencimiento ? `${p.dias_alerta_vencimiento} días antes` : 'Sin alerta',
       emite: emite(p),
       estado: p.esta_activo ? 'ACTIVO' : 'INACTIVO',
@@ -130,7 +130,7 @@ const validar = (): string | null => {
   if (!f.nombre.trim()) return 'Ingrese el nombre del procedimiento.';
   if (!f.unidad_organica_id) return 'Seleccione la unidad orgánica responsable.';
   const plazo = Number(f.plazo_atencion_dias);
-  if (!Number.isInteger(plazo) || plazo < 1) return 'El plazo de atención debe ser de al menos 1 día.';
+  if (f.plazo_atencion_dias === '' || !Number.isInteger(plazo) || plazo < 0) return 'Ingrese el plazo de atención (0 si se atiende el mismo día).';
   const alerta = Number(f.dias_alerta_vencimiento);
   if (f.dias_alerta_vencimiento === '' || !Number.isInteger(alerta) || alerta < 0) return 'Ingrese los días de alerta (0 si no se requiere).';
   if (alerta > plazo) return 'Los días de alerta no pueden superar el plazo de atención.';
@@ -307,9 +307,10 @@ const checkRowClass =
           <div>
             <label :class="labelClass" for="tupa-plazo">Plazo de Atención <span class="text-red-500">*</span></label>
             <div class="relative">
-              <input id="tupa-plazo" v-model="form.plazo_atencion_dias" type="number" min="1" step="1" placeholder="Ej. 7" :class="[inputClass, 'pr-24', fieldError('plazo_atencion_dias') ? errorInputClass : '']" />
+              <input id="tupa-plazo" v-model="form.plazo_atencion_dias" type="number" min="0" step="1" placeholder="Ej. 7" :class="[inputClass, 'pr-24', fieldError('plazo_atencion_dias') ? errorInputClass : '']" />
               <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">días hábiles</span>
             </div>
+            <p :class="hintClass">0 = se atiende el mismo día (p. ej. cese de actividades).</p>
           </div>
           <div>
             <label :class="labelClass" for="tupa-alerta">Alerta de Vencimiento <span class="text-red-500">*</span></label>

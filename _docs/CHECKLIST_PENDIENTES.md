@@ -10,7 +10,7 @@
 
 ## 1. Build y calidad
 
-- [ ] 🔴 **`pnpm build` falla**: `vue-tsc` reporta `AppHeader.vue(42,7): 'currentInfo' is declared but its value is never read` (TS6133). El ACTA de cierre dice "0 errores", ya no es cierto.
+- [x] ✅ (resuelto: se eliminó el breadcrumb muerto de AppHeader) **`pnpm build` falla**: `vue-tsc` reporta `AppHeader.vue(42,7): 'currentInfo' is declared but its value is never read` (TS6133). El ACTA de cierre dice "0 errores", ya no es cierto.
 - [ ] 🟡 **0 tests unitarios** en `src/` (Vitest está instalado pero no hay ningún `*.spec.ts` / `*.test.ts`). Solo existe 1 test E2E en `_validation/` (Estados).
 - [ ] 🟡 Quitar los comentarios `// TODO(MIGRATION): Este repositorio apunta a Django (8000)` de los 13 repositorios: ya apuntan a Laravel.
 - [ ] 🟡 Mover el bloque `"pnpm"` de `package.json` (pnpm 11 ya no lo lee; avisa en cada comando).
@@ -46,7 +46,7 @@ Probado con el backend local (respuesta HTTP real):
 
 | Frontend llama a | Respuesta | Qué hacer |
 |---|---|---|
-| `GET licencias-funcionamiento/{id}` | **405** (no existe la ruta) | Usar `consulta`/`buscar`, o agregar `show` en backend |
+| ~~`GET licencias-funcionamiento/{id}`~~ | ✅ | El front ya no lo usa (lista con `consulta`) |
 | ~~`GET itse/{id}` (id inexistente)~~ | ✅ 404 | Era el error de permisos de `storage/logs`, ya corregido |
 | ~~`DELETE itse/{id}`~~ | ✅ | El front ahora usa `itse/inactivar` |
 | `GET/POST/PUT/DELETE unidades-organicas/{id}` | **404 / 405** | El backend solo tiene `GET` (lista). Hacer la página de solo lectura o agregar CRUD en backend |
@@ -64,7 +64,8 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 - [ ] 🟠 Archivos adjuntos: listar, subir, descargar, eliminar
 
 **Licencias de funcionamiento**
-- [ ] 🟠 Buscar, reporte (`reporte`), inactivar (`inactivar`), verificar expediente
+- [x] ✅ Inactivar (modal con motivo, fecha, documento; guarda usuario)
+- [ ] 🟠 Buscar, reporte (`reporte`), verificar expediente
 - [ ] 🟠 Historial de estados (`{pk}/estados`), giros (`{pk}/giros`), notificación (`{pk}/notificacion`)
 - [ ] 🟠 Archivos adjuntos
 
@@ -97,3 +98,9 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 - Redirección por rol (admin / inspector / ciudadano) y guardas de ruta.
 - CRUD con modal en: Estados, Expedientes, Giros, Inspectores, Licencias, Niveles de riesgo, Tipos de documento, Tipos de licencia, Usuarios, Zonificaciones (falta probar cada uno con datos reales).
 - Todas las listas responden 200 contra el backend local.
+
+## 8. Backend: deuda detectada (no bloquea)
+
+- [ ] 🟠 **21 tests fallan en la suite completa** (Personas, Estados, ITSE unit, TipoDocumentoIdentidad). Ya fallaban antes; varios pasan al correr el módulo solo → interferencia entre tests (mocks de facades `DB::shouldReceive` que no se limpian).
+- [ ] 🟡 `phpstan.neon` solo analiza `app/Modules/Estados`. Licencias tiene 110 errores previos (mayoría en Resources).
+- [x] ✅ Licencias: rutas sin `auth:api`, datos que se perdían al crear/modificar, inactivación rota (500), usuario no registrado, número duplicado → 500, fechas ISO mal formadas y fecha de emisión en UTC. Corregido con tests (67/67).

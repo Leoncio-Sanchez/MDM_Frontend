@@ -36,4 +36,9 @@ export class EstadosRepositoryImpl implements EstadosRepositoryPort {
     const { data } = await httpClient.get<Estados[]>(`${this.baseUrl}inactivos-itse/`);
     return data;
   }
+
+  async getInactivosLf(): Promise<Estados[]> {
+    const { data } = await httpClient.get<Estados[]>(`${this.baseUrl}inactivos-lf/`);
+    return data;
+  }
 }

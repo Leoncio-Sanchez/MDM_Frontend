@@ -9,4 +9,6 @@ export interface EstadosRepositoryPort {
   delete(id: number): Promise<void>;
   /** Estados inactivos aplicables a ITSE (motivos de inactivación) */
   getInactivosItse(): Promise<Estados[]>;
+  /** Estados inactivos aplicables a Licencias de Funcionamiento */
+  getInactivosLf(): Promise<Estados[]>;
 }

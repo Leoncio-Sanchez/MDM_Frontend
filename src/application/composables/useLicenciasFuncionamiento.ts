@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { LicenciasFuncionamiento } from '../../domain/entities/LicenciasFuncionamiento.entity';
+import type { LicenciaPayload, InactivarLicenciaPayload } from '../../domain/entities/LicenciasFuncionamiento.entity';
 
 const KEY = ['licenciasFuncionamiento'] as const;
 
-/** Lista todos los licenciasFuncionamiento */
+/** Lista todas las licencias de funcionamiento */
 export function useLicenciasFuncionamientoList() {
   return useQuery({
     queryKey: KEY,
@@ -13,39 +13,34 @@ export function useLicenciasFuncionamientoList() {
   });
 }
 
-/** Obtiene un licenciasFuncionamiento por ID */
-export function useLicenciasFuncionamiento(id: number | null) {
-  return useQuery({
-    queryKey: [...KEY, id],
-    queryFn: () => container.licenciasFuncionamiento.getById(id!),
-    enabled: id !== null && Number.isFinite(id),
-  });
-}
-
-/** Crea un licenciasFuncionamiento */
+/** Emite una licencia */
 export function useCrearLicenciasFuncionamiento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<LicenciasFuncionamiento, 'id'>) => container.licenciasFuncionamiento.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    mutationFn: (data: LicenciaPayload) => container.licenciasFuncionamiento.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      // Emitir la licencia saca al expediente de la lista de pendientes
+      qc.invalidateQueries({ queryKey: ['expedientes', 'pendientes'] });
+    },
   });
 }
 
-/** Actualiza un licenciasFuncionamiento */
+/** Actualiza una licencia (reemplazo completo) */
 export function useActualizarLicenciasFuncionamiento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<LicenciasFuncionamiento> }) =>
+    mutationFn: ({ id, data }: { id: number; data: LicenciaPayload }) =>
       container.licenciasFuncionamiento.update(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
 
-/** Elimina un licenciasFuncionamiento */
-export function useEliminarLicenciasFuncionamiento() {
+/** Inactiva una licencia registrando el estado y su sustento */
+export function useInactivarLicenciasFuncionamiento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => container.licenciasFuncionamiento.delete(id),
+    mutationFn: (data: InactivarLicenciaPayload) => container.licenciasFuncionamiento.inactivar(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

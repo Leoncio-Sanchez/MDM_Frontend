@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../../infrastructure/store/useAuthStore';
 import { useUiStore } from '../../../infrastructure/store/useUiStore';
 import { useLogout } from '../../../application/composables/useAuth';
 import ModalShell from '../molecules/ModalShell.vue';
 
-const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 const uiStore = useUiStore();
@@ -14,38 +13,6 @@ const logoutMutation = useLogout();
 
 const user = computed(() => authStore.user);
 const isLogoutModalOpen = ref(false);
-
-interface RouteMetaInfo {
-  section: string;
-  title: string;
-}
-
-const routeMap: Record<string, RouteMetaInfo> = {
-  '/admin': { section: 'Operaciones', title: 'Dashboard General' },
-  '/admin/expedientes': { section: 'Operaciones', title: 'Expedientes TUPA' },
-  '/admin/licencias-funcionamiento': { section: 'Operaciones', title: 'Licencias de Funcionamiento' },
-  '/admin/itse': { section: 'Operaciones', title: 'Inspecciones ITSE' },
-  '/admin/inspectores': { section: 'Operaciones', title: 'Inspectores Técnicos' },
-  '/admin/personas': { section: 'Catálogos Maestros', title: 'Personas / Administrados' },
-  '/admin/giros': { section: 'Catálogos Maestros', title: 'Giros Comerciales (CIIU)' },
-  '/admin/zonificaciones': { section: 'Catálogos Maestros', title: 'Zonificaciones Urbanas' },
-  '/admin/niveles-riesgo': { section: 'Catálogos Maestros', title: 'Niveles de Riesgo' },
-  '/admin/tipos-procedimiento-tupa': { section: 'Catálogos Maestros', title: 'Procedimientos TUPA' },
-  '/admin/tipos-licencia': { section: 'Catálogos Maestros', title: 'Tipos de Licencia' },
-  '/admin/tipos-documento-identidad': { section: 'Catálogos Maestros', title: 'Tipos de Documento' },
-  '/admin/estados': { section: 'Administración', title: 'Estados del Sistema' },
-  '/admin/unidades-organicas': { section: 'Administración', title: 'Unidades Orgánicas' },
-  '/admin/usuarios': { section: 'Administración', title: 'Usuarios y Permisos' },
-  '/ciudadano': { section: 'Portal Ciudadano', title: 'Mis Trámites' },
-  '/inspector': { section: 'Portal Inspector', title: 'Hoja de Ruta ITSE' },
-};
-
-const currentInfo = computed<RouteMetaInfo>(() => {
-  return routeMap[route.path] || {
-    section: 'Panel',
-    title: 'Gestión Municipal'
-  };
-});
 
 const openLogoutModal = () => {
   isLogoutModalOpen.value = true;
@@ -68,7 +35,7 @@ const confirmLogout = () => {
 <template>
   <header class="h-16 bg-[#00356a] border-b border-[#1b2a47] px-4 sm:px-6 flex items-center justify-between shadow-xs shrink-0 z-30 select-none transition-colors duration-200">
     
-    <!-- Lado Izquierdo: Botón Hamburguesa / Colapsador + Breadcrumb limpio -->
+    <!-- Lado Izquierdo: Botón Hamburguesa / Colapsador -->
     <div class="flex items-center gap-3 sm:gap-4 min-w-0">
       <!-- Botón de Hamburguesa / Toggle Sidebar -->
       <button 
@@ -82,14 +49,6 @@ const confirmLogout = () => {
         </svg>
       </button>
 
-     <!--  Breadcrumb minimalista y limpio 
-        <nav class="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium min-w-0">
-        <span class="text-blue-300/60 hidden md:inline">MUNI_APP</span>
-        <span class="text-blue-400/30 hidden md:inline">/</span>
-        <span class="text-blue-200/80 hidden sm:inline truncate">{{ currentInfo.section }}</span>
-        <span class="text-blue-400/30 hidden sm:inline">/</span>
-        <span class="text-white font-bold truncate">{{ currentInfo.title }}</span>
-      </nav>-->
     </div>
 
     <!-- Lado Derecho: Botón de Tema + Usuario de Sesión + Botón Cerrar Sesión -->

@@ -54,3 +54,12 @@ export function useEstadosInactivosItse() {
     staleTime: 1000 * 60 * 5,
   });
 }
+
+/** Estados inactivos para Licencias de Funcionamiento (motivos de inactivación) */
+export function useEstadosInactivosLf() {
+  return useQuery({
+    queryKey: [...KEY, 'inactivos-lf'],
+    queryFn: () => container.estados.getInactivosLf(),
+    staleTime: 1000 * 60 * 5,
+  });
+}

@@ -27,7 +27,11 @@ export function useCrearItse() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: ItsePayload) => container.itse.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      // Emitir el ITSE saca al expediente de la lista de pendientes
+      qc.invalidateQueries({ queryKey: ['expedientes', 'pendientes'] });
+    },
   });
 }
 

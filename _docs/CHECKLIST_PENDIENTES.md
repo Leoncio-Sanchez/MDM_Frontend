@@ -101,7 +101,9 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 
 ## 8. Backend: deuda detectada (no bloquea)
 
-- [ ] 🟠 **21 tests fallan en la suite completa** (Personas, Estados, ITSE unit, TipoDocumentoIdentidad). Ya fallaban antes; varios pasan al correr el módulo solo → interferencia entre tests (mocks de facades `DB::shouldReceive` que no se limpian).
-- [ ] 🔴 **5 catálogos con escritura sin autenticación**: giros, niveles-riesgo, tipos-documento-identidad, tipos-licencia, zonificaciones (rutas solo con middleware `api`). TUPA ya corregido.
+- [ ] 🟠 **19 tests fallan en la suite completa** (antes 21; se arreglaron los 2 de TipoDocumentoIdentidad) (Personas, Estados, ITSE unit). Ya fallaban antes; varios pasan al correr el módulo solo → interferencia entre tests (mocks de facades `DB::shouldReceive` que no se limpian).
+- [x] ✅ (cerrado) **5 catálogos con escritura sin autenticación**: giros, niveles-riesgo, tipos-documento-identidad, tipos-licencia, zonificaciones (rutas solo con middleware `api`). TUPA ya corregido.
 - [ ] 🟡 `phpstan.neon` solo analiza `app/Modules/Estados`. Licencias tiene 110 errores previos (mayoría en Resources).
 - [x] ✅ Licencias: rutas sin `auth:api`, datos que se perdían al crear/modificar, inactivación rota (500), usuario no registrado, número duplicado → 500, fechas ISO mal formadas y fecha de emisión en UTC. Corregido con tests (67/67).
+- [ ] 🟡 `GET /api/documentation` (Swagger) es público: desactivarlo en producción.
+- [ ] 🟡 14 archivos de test crean el usuario `auth_user` a mano: migrarlos al helper `comoUsuarioApi()` de `tests/TestCase.php`.

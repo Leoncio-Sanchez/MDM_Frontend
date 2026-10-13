@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { TiposProcedimientoTupa } from '../../domain/entities/TiposProcedimientoTupa.entity';
+import type { TipoProcedimientoTupaPayload } from '../../domain/entities/TiposProcedimientoTupa.entity';
 
 const KEY = ['tiposProcedimientoTupa'] as const;
 
@@ -26,7 +26,7 @@ export function useTiposProcedimientoTupa(id: number | null) {
 export function useCrearTiposProcedimientoTupa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<TiposProcedimientoTupa, 'id'>) => container.tiposProcedimientoTupa.create(data),
+    mutationFn: (data: TipoProcedimientoTupaPayload) => container.tiposProcedimientoTupa.create(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -35,7 +35,7 @@ export function useCrearTiposProcedimientoTupa() {
 export function useActualizarTiposProcedimientoTupa() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<TiposProcedimientoTupa> }) =>
+    mutationFn: ({ id, data }: { id: number; data: Partial<TipoProcedimientoTupaPayload> }) =>
       container.tiposProcedimientoTupa.update(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

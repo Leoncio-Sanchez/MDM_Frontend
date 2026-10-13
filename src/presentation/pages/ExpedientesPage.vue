@@ -72,7 +72,10 @@ const personasOptions = computed(() => {
 });
 
 const tupaSelectOptions = computed<SelectOption[]>(() => {
-  return tupaOptions.value.map((proc: any) => ({
+  // Los procedimientos inactivos no se ofrecen; se mantiene el que ya tiene el expediente en edición
+  return tupaOptions.value
+    .filter((proc: any) => proc.esta_activo || String(proc.id) === String(form.value.tipo_procedimiento_tupa_id))
+    .map((proc: any) => ({
     value: proc.id,
     label: proc.nombre,
     code: proc.codigo,

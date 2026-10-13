@@ -1,12 +1,11 @@
 /**
- * @source golden-source
- * @origin reconstructed-frontend/src/domain/entities/UnidadesOrganicas.entity.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
+ * Unidad orgánica (gerencia / subgerencia) de la municipalidad.
+ * Refleja `/api/lf-itse/unidades-organicas/` (el backend solo expone el listado).
  */
-
 export interface UnidadesOrganicas {
   id: number;
-  nombre?: string;
+  codigo: string;
+  nombre: string;
+  sigla?: string | null;
+  esta_activo: boolean;
 }

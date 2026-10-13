@@ -6,12 +6,12 @@
  * @method Ruta A — Golden Source Validado
  */
 
-import type { TiposProcedimientoTupa } from '../entities/TiposProcedimientoTupa.entity';
+import type { TiposProcedimientoTupa, TipoProcedimientoTupaPayload } from '../entities/TiposProcedimientoTupa.entity';
 
 export interface TiposProcedimientoTupaRepositoryPort {
   getAll(): Promise<TiposProcedimientoTupa[]>;
   getById(id: number): Promise<TiposProcedimientoTupa>;
-  create(data: Omit<TiposProcedimientoTupa, 'id'>): Promise<TiposProcedimientoTupa>;
-  update(id: number, data: Partial<TiposProcedimientoTupa>): Promise<TiposProcedimientoTupa>;
+  create(data: TipoProcedimientoTupaPayload): Promise<TiposProcedimientoTupa>;
+  update(id: number, data: Partial<TipoProcedimientoTupaPayload>): Promise<TiposProcedimientoTupa>;
   delete(id: number): Promise<void>;
 }

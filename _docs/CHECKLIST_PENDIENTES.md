@@ -26,7 +26,7 @@ Estas 4 páginas muestran una tabla, pero **Crear y Editar solo abren un `alert(
 - [x] ✅ `SearchableSelect`: la lista ya no se corta dentro de los modales (se renderiza en `body` y abre hacia arriba si no hay espacio).
 - [x] ✅ Expedientes: `fecha_recepcion` se guardaba en hora de Lima y se leía como UTC (salía un día antes). El backend ahora guarda en UTC; la tabla muestra solo la fecha y los nombres de procedimiento y solicitante.
 - [x] ✅ Dashboard con datos reales: expedientes en trámite (`/expedientes/pendientes/`), ITSE vigentes y licencias vigentes.
-- [ ] 🔴 `TiposProcedimientoTupaPage.vue`
+- [x] ✅ `TiposProcedimientoTupaPage.vue` — CRUD completo; eliminar en uso ofrece desactivar; Expedientes solo ofrece procedimientos activos.
 - [ ] 🔴 `UnidadesOrganicasPage.vue` — la entidad solo tiene 2 campos.
 
 Para cada una: modal de crear/editar (como `GirosPage.vue`), columnas reales, quitar los datos falsos de `getDisplayData()`.
@@ -102,5 +102,6 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 ## 8. Backend: deuda detectada (no bloquea)
 
 - [ ] 🟠 **21 tests fallan en la suite completa** (Personas, Estados, ITSE unit, TipoDocumentoIdentidad). Ya fallaban antes; varios pasan al correr el módulo solo → interferencia entre tests (mocks de facades `DB::shouldReceive` que no se limpian).
+- [ ] 🔴 **5 catálogos con escritura sin autenticación**: giros, niveles-riesgo, tipos-documento-identidad, tipos-licencia, zonificaciones (rutas solo con middleware `api`). TUPA ya corregido.
 - [ ] 🟡 `phpstan.neon` solo analiza `app/Modules/Estados`. Licencias tiene 110 errores previos (mayoría en Resources).
 - [x] ✅ Licencias: rutas sin `auth:api`, datos que se perdían al crear/modificar, inactivación rota (500), usuario no registrado, número duplicado → 500, fechas ISO mal formadas y fecha de emisión en UTC. Corregido con tests (67/67).

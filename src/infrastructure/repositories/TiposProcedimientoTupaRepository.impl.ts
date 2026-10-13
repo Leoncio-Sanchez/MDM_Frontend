@@ -9,7 +9,7 @@
  */
 
 import type { TiposProcedimientoTupaRepositoryPort } from '../../domain/ports/TiposProcedimientoTupaRepository.port';
-import type { TiposProcedimientoTupa } from '../../domain/entities/TiposProcedimientoTupa.entity';
+import type { TiposProcedimientoTupa, TipoProcedimientoTupaPayload } from '../../domain/entities/TiposProcedimientoTupa.entity';
 import { httpClient } from '../http/axios.client';
 
 export class TiposProcedimientoTupaRepositoryImpl implements TiposProcedimientoTupaRepositoryPort {
@@ -25,12 +25,12 @@ export class TiposProcedimientoTupaRepositoryImpl implements TiposProcedimientoT
     return data;
   }
 
-  async create(payload: Omit<TiposProcedimientoTupa, 'id'>): Promise<TiposProcedimientoTupa> {
+  async create(payload: TipoProcedimientoTupaPayload): Promise<TiposProcedimientoTupa> {
     const { data } = await httpClient.post(this.baseUrl, payload);
     return data;
   }
 
-  async update(id: number, payload: Partial<TiposProcedimientoTupa>): Promise<TiposProcedimientoTupa> {
+  async update(id: number, payload: Partial<TipoProcedimientoTupaPayload>): Promise<TiposProcedimientoTupa> {
     const { data } = await httpClient.put(`${this.baseUrl}${id}/`, payload);
     return data;
   }

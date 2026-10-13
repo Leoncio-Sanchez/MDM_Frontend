@@ -111,6 +111,15 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 ## 9. Autorización por rol y portales
 
 - [x] ✅ **Cualquier usuario autenticado tenía acceso total a la API de gestión** (un CIUDADANO podía listar usuarios, ver datos personales y crear/modificar/borrar). Ahora 114 rutas exigen `rol:ADMIN_MUNICIPALIDAD` (middleware `VerificarRol`, rol resuelto contra la BD en cada petición).
-- [x] ✅ Rol `INSPECTOR`: usuarios no administradores con `usuarios_perfiles.es_inspector = true` (antes nadie lo recibía).
+- [x] ↩️ Rol `INSPECTOR` **retirado**: se basaba en `usuarios_perfiles.es_inspector`, columna que solo existe en la BD local de test (en producción rompía el login de todo no-administrador). El esquema real no tiene forma de marcar a un usuario como inspector.
 - [ ] 🔴 **Portal ciudadano bloqueado**: no existe vínculo usuario → persona. Las columnas `auth_user.role/ruc` solo existen en la BD local (migración de test), no en Neon. Hay que definir con el equipo dónde guardar el vínculo (tabla nueva `usuarios_personas` propuesta) y cómo se crean las cuentas de ciudadanos.
 - [ ] 🔴 **Portal inspector bloqueado**: la asignación de inspectores (`itse_inspectores`, TD-010) existe en Neon pero no localmente, y no conocemos su esquema exacto. Tampoco existe dónde registrar el resultado de la inspección (conforme / observado). Se necesita el esquema real de Neon y la definición del resultado.
+
+## 10. Esquema real vs código (fuente: `D:/MDM/BD/data-production`, 37 tablas)
+
+- [x] ✅ Unidades Orgánicas ya no consulta `usuarios_perfiles.unidad_organica_id` (no existe en producción).
+- [ ] 🔴 **Licencias escribe `licencias_funcionamiento.estado`, columna que no existe en producción** → crear una licencia fallaría.
+- [ ] 🔴 **Las migraciones de Laravel no crean el esquema en producción**: 3 migraciones (26 tablas) solo corren con `APP_ENV` `local`/`testing`, y su esquema difiere del real. Hay que escribir migraciones reales a partir del esquema de producción.
+- [ ] 🟠 `inspectores` / `itse_inspectores` existen en el dump de junio (`2026.sql`) pero no en el esquema de producción; el módulo Inspectores de Laravel usa `auth_user`.
+- [ ] 🟡 El modelo `User` declara `name`, `role`, `ruc` en `$fillable` (no existen en `auth_user`).
+- [ ] 🟡 Neon fue eliminado: el `.env.backup` con sus credenciales ya no sirve.

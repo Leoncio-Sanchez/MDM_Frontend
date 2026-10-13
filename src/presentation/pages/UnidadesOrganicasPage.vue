@@ -171,7 +171,7 @@ const handleDelete = async (item: any) => {
 
   const ok = await dialog.confirmDelete({
     title: 'Eliminar unidad orgánica',
-    text: `¿Eliminar "${u.codigo} · ${u.nombre}"?\nSolo es posible si no tiene procedimientos TUPA ni usuarios asignados.`,
+    text: `¿Eliminar "${u.codigo} · ${u.nombre}"?\nSolo es posible si no tiene procedimientos TUPA asociados.`,
     onConfirm: async () => {
       try {
         await eliminar.mutateAsync(u.id);

@@ -107,3 +107,10 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 - [x] ✅ Licencias: rutas sin `auth:api`, datos que se perdían al crear/modificar, inactivación rota (500), usuario no registrado, número duplicado → 500, fechas ISO mal formadas y fecha de emisión en UTC. Corregido con tests (67/67).
 - [ ] 🟡 `GET /api/documentation` (Swagger) es público: desactivarlo en producción.
 - [ ] 🟡 14 archivos de test crean el usuario `auth_user` a mano: migrarlos al helper `comoUsuarioApi()` de `tests/TestCase.php`.
+
+## 9. Autorización por rol y portales
+
+- [x] ✅ **Cualquier usuario autenticado tenía acceso total a la API de gestión** (un CIUDADANO podía listar usuarios, ver datos personales y crear/modificar/borrar). Ahora 114 rutas exigen `rol:ADMIN_MUNICIPALIDAD` (middleware `VerificarRol`, rol resuelto contra la BD en cada petición).
+- [x] ✅ Rol `INSPECTOR`: usuarios no administradores con `usuarios_perfiles.es_inspector = true` (antes nadie lo recibía).
+- [ ] 🔴 **Portal ciudadano bloqueado**: no existe vínculo usuario → persona. Las columnas `auth_user.role/ruc` solo existen en la BD local (migración de test), no en Neon. Hay que definir con el equipo dónde guardar el vínculo (tabla nueva `usuarios_personas` propuesta) y cómo se crean las cuentas de ciudadanos.
+- [ ] 🔴 **Portal inspector bloqueado**: la asignación de inspectores (`itse_inspectores`, TD-010) existe en Neon pero no localmente, y no conocemos su esquema exacto. Tampoco existe dónde registrar el resultado de la inspección (conforme / observado). Se necesita el esquema real de Neon y la definición del resultado.

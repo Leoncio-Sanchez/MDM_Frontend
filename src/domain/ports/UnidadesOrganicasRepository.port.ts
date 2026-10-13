@@ -6,12 +6,12 @@
  * @method Ruta A — Golden Source Validado
  */
 
-import type { UnidadesOrganicas } from '../entities/UnidadesOrganicas.entity';
+import type { UnidadesOrganicas, UnidadOrganicaPayload } from '../entities/UnidadesOrganicas.entity';
 
 export interface UnidadesOrganicasRepositoryPort {
   getAll(): Promise<UnidadesOrganicas[]>;
   getById(id: number): Promise<UnidadesOrganicas>;
-  create(data: Omit<UnidadesOrganicas, 'id'>): Promise<UnidadesOrganicas>;
-  update(id: number, data: Partial<UnidadesOrganicas>): Promise<UnidadesOrganicas>;
+  create(data: UnidadOrganicaPayload): Promise<UnidadesOrganicas>;
+  update(id: number, data: UnidadOrganicaPayload): Promise<UnidadesOrganicas>;
   delete(id: number): Promise<void>;
 }

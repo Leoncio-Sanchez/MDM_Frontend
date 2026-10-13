@@ -53,7 +53,10 @@ const listOf = <T,>(value: unknown): T[] => (Array.isArray(value) ? value : (val
 
 const procedimientos = computed(() => listOf<TiposProcedimientoTupa>(data.value));
 const unidades = computed(() => listOf<UnidadesOrganicas>(unidadesData.value));
-const unidadesActivas = computed(() => unidades.value.filter((u) => u.esta_activo));
+// Las unidades inactivas no se ofrecen; se mantiene la que ya tiene el procedimiento en edición
+const unidadesActivas = computed(() =>
+  unidades.value.filter((u) => u.esta_activo || String(u.id) === String(form.value.unidad_organica_id)),
+);
 const unidadesById = computed(() => new Map(unidades.value.map((u) => [u.id, u])));
 
 const emite = (p: TiposProcedimientoTupa) =>

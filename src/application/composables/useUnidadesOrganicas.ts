@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { UnidadesOrganicas } from '../../domain/entities/UnidadesOrganicas.entity';
+import type { UnidadOrganicaPayload } from '../../domain/entities/UnidadesOrganicas.entity';
 
 const KEY = ['unidadesOrganicas'] as const;
 
@@ -26,7 +26,7 @@ export function useUnidadesOrganicas(id: number | null) {
 export function useCrearUnidadesOrganicas() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<UnidadesOrganicas, 'id'>) => container.unidadesOrganicas.create(data),
+    mutationFn: (data: UnidadOrganicaPayload) => container.unidadesOrganicas.create(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
@@ -35,7 +35,7 @@ export function useCrearUnidadesOrganicas() {
 export function useActualizarUnidadesOrganicas() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<UnidadesOrganicas> }) =>
+    mutationFn: ({ id, data }: { id: number; data: UnidadOrganicaPayload }) =>
       container.unidadesOrganicas.update(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });

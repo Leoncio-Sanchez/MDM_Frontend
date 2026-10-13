@@ -27,7 +27,7 @@ Estas 4 páginas muestran una tabla, pero **Crear y Editar solo abren un `alert(
 - [x] ✅ Expedientes: `fecha_recepcion` se guardaba en hora de Lima y se leía como UTC (salía un día antes). El backend ahora guarda en UTC; la tabla muestra solo la fecha y los nombres de procedimiento y solicitante.
 - [x] ✅ Dashboard con datos reales: expedientes en trámite (`/expedientes/pendientes/`), ITSE vigentes y licencias vigentes.
 - [x] ✅ `TiposProcedimientoTupaPage.vue` — CRUD completo; eliminar en uso ofrece desactivar; Expedientes solo ofrece procedimientos activos.
-- [ ] 🔴 `UnidadesOrganicasPage.vue` — la entidad solo tiene 2 campos.
+- [x] ✅ `UnidadesOrganicasPage.vue` — CRUD completo (backend nuevo: crear, editar, eliminar protegido por procedimientos TUPA y usuarios; ofrece desactivar).
 
 Para cada una: modal de crear/editar (como `GirosPage.vue`), columnas reales, quitar los datos falsos de `getDisplayData()`.
 
@@ -49,7 +49,7 @@ Probado con el backend local (respuesta HTTP real):
 | ~~`GET licencias-funcionamiento/{id}`~~ | ✅ | El front ya no lo usa (lista con `consulta`) |
 | ~~`GET itse/{id}` (id inexistente)~~ | ✅ 404 | Era el error de permisos de `storage/logs`, ya corregido |
 | ~~`DELETE itse/{id}`~~ | ✅ | El front ahora usa `itse/inactivar` |
-| `GET/POST/PUT/DELETE unidades-organicas/{id}` | **404 / 405** | El backend solo tiene `GET` (lista). Hacer la página de solo lectura o agregar CRUD en backend |
+| ~~`GET/POST/PUT/DELETE unidades-organicas/{id}`~~ | ✅ | CRUD agregado en el backend |
 | `GET estados/` | 200, pero **paginado** `{count, results}` | Ya lo maneja `EstadosRepository`; verificar que el resto (que espera array) no cambie |
 
 ## 6. Funciones del backend que el frontend no usa todavía

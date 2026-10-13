@@ -101,7 +101,7 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 
 ## 8. Backend: deuda detectada (no bloquea)
 
-- [ ] 🟠 **19 tests fallan en la suite completa** (antes 21; se arreglaron los 2 de TipoDocumentoIdentidad) (Personas, Estados, ITSE unit). Ya fallaban antes; varios pasan al correr el módulo solo → interferencia entre tests (mocks de facades `DB::shouldReceive` que no se limpian).
+- [x] ✅ (resuelto) **19 tests fallan en la suite completa** (antes 21; se arreglaron los 2 de TipoDocumentoIdentidad) (Personas, Estados, ITSE unit). Ya fallaban antes; varios pasan al correr el módulo solo → interferencia entre tests (mocks de facades `DB::shouldReceive` que no se limpian).
 - [x] ✅ (cerrado) **5 catálogos con escritura sin autenticación**: giros, niveles-riesgo, tipos-documento-identidad, tipos-licencia, zonificaciones (rutas solo con middleware `api`). TUPA ya corregido.
 - [ ] 🟡 `phpstan.neon` solo analiza `app/Modules/Estados`. Licencias tiene 110 errores previos (mayoría en Resources).
 - [x] ✅ Licencias: rutas sin `auth:api`, datos que se perdían al crear/modificar, inactivación rota (500), usuario no registrado, número duplicado → 500, fechas ISO mal formadas y fecha de emisión en UTC. Corregido con tests (67/67).
@@ -118,8 +118,10 @@ Endpoints ya listos en Laravel sin pantalla o sin llamada en el front:
 ## 10. Esquema real vs código (fuente: `D:/MDM/BD/data-production`, 37 tablas)
 
 - [x] ✅ Unidades Orgánicas ya no consulta `usuarios_perfiles.unidad_organica_id` (no existe en producción).
-- [ ] 🔴 **Licencias escribe `licencias_funcionamiento.estado`, columna que no existe en producción** → crear una licencia fallaría.
-- [ ] 🔴 **Las migraciones de Laravel no crean el esquema en producción**: 3 migraciones (26 tablas) solo corren con `APP_ENV` `local`/`testing`, y su esquema difiere del real. Hay que escribir migraciones reales a partir del esquema de producción.
+- [x] ✅ Licencias: ya no escribe `estado` (inexistente) y guarda `usuario_id`/`fecha_digitacion` al crear y `usuario_id` en sus giros (obligatorios en el esquema real).
+- [x] ✅ (resuelto: migración `crear_esquema_produccion` + `database/sql/esquema_produccion.sql`; tests sobre PostgreSQL) **Las migraciones de Laravel no crean el esquema en producción**: 3 migraciones (26 tablas) solo corren con `APP_ENV` `local`/`testing`, y su esquema difiere del real. Hay que escribir migraciones reales a partir del esquema de producción.
 - [ ] 🟠 `inspectores` / `itse_inspectores` existen en el dump de junio (`2026.sql`) pero no en el esquema de producción; el módulo Inspectores de Laravel usa `auth_user`.
-- [ ] 🟡 El modelo `User` declara `name`, `role`, `ruc` en `$fillable` (no existen en `auth_user`).
+- [x] ✅ Modelo `User` y `UserFactory` alineados con `auth_user` (sin `name/role/ruc` ni cast bcrypt).
 - [ ] 🟡 Neon fue eliminado: el `.env.backup` con sus credenciales ya no sirve.
+- [ ] 🔴 **`itse.fecha_solicitud_renovacion` es NOT NULL en producción** pero la API la acepta vacía (ITSE estándar) → guardar fallaría. Pendiente de definir la regla de negocio.
+- [ ] 🟠 BD local de desarrollo todavía tiene el esquema falso: recrearla con `migrate:fresh` (y cargar catálogos reales del dump).

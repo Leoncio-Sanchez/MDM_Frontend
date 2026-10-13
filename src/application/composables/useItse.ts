@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import type { MaybeRefOrGetter } from 'vue';
 import { container } from '../../composition/container';
 import type { ItsePayload, InactivarItsePayload } from '../../domain/entities/Itse.entity';
 
 const KEY = ['itse'] as const;
 
 /** Lista todos los ITSE */
-export function useItseList() {
+export function useItseList(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: KEY,
+    enabled,
     queryFn: () => container.itse.getAll(),
     staleTime: 1000 * 60 * 5,
   });

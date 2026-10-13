@@ -12,9 +12,15 @@ const user = computed(() => authStore.user);
 // ── Indicadores (datos reales de la API) ────────────────────────────
 const DIAS_ALERTA_ITSE = 30;
 
-const { data: pendientesData, isLoading: cargandoPendientes, isError: errorPendientes } = useExpedientesPendientes();
-const { data: itseData, isLoading: cargandoItse, isError: errorItse } = useItseList();
-const { data: licenciasData, isLoading: cargandoLicencias, isError: errorLicencias } = useLicenciasFuncionamientoList();
+// Cada tarjeta (y su consulta) solo aparece si el perfil tiene ese acceso
+const verTramites = computed(() => authStore.puede(['expedientes']));
+const verItse = computed(() => authStore.puede(['itse']));
+const verLicencias = computed(() => authStore.puede(['licencias']));
+const sinIndicadores = computed(() => !verTramites.value && !verItse.value && !verLicencias.value);
+
+const { data: pendientesData, isLoading: cargandoPendientes, isError: errorPendientes } = useExpedientesPendientes(verTramites);
+const { data: itseData, isLoading: cargandoItse, isError: errorItse } = useItseList(verItse);
+const { data: licenciasData, isLoading: cargandoLicencias, isError: errorLicencias } = useLicenciasFuncionamientoList(verLicencias);
 
 const listOf = <T,>(value: unknown): T[] => (Array.isArray(value) ? value : (value as any)?.results ?? []);
 
@@ -122,9 +128,16 @@ const roleLabel = computed(() => {
     </div>
 
     <!-- Tarjetas de Métricas: Cards con Iconos y Estados -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5" :aria-busy="cargandoPendientes || cargandoItse || cargandoLicencias">
+    <p
+      v-if="sinIndicadores"
+      class="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-sm text-neutral-500 dark:text-neutral-400"
+    >
+      Su perfil no incluye Expedientes, Licencias ni ITSE. Use el menú lateral para acceder a sus opciones.
+    </p>
+    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-5" :aria-busy="cargandoPendientes || cargandoItse || cargandoLicencias">
       <!-- Trámites TUPA -->
       <router-link 
+        v-if="verTramites"
         to="/admin/expedientes" 
         class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
       >
@@ -150,6 +163,7 @@ const roleLabel = computed(() => {
 
       <!-- Inspecciones ITSE -->
       <router-link 
+        v-if="verItse"
         to="/admin/itse" 
         class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
       >
@@ -175,6 +189,7 @@ const roleLabel = computed(() => {
 
       <!-- Licencias Vigentes -->
       <router-link 
+        v-if="verLicencias"
         to="/admin/licencias-funcionamiento" 
         class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
       >

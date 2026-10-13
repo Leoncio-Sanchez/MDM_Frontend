@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 import { useUiStore } from '../../infrastructure/store/useUiStore';
+import type { Permiso } from '../../domain/entities/User.entity';
 
 const routes = [
   { 
@@ -45,20 +46,20 @@ const routes = [
         component: () => import('../pages/DashboardPage.vue'),
         meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] }
       },
-      { path: 'admin/estados', component: () => import('../pages/EstadosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/expedientes', component: () => import('../pages/ExpedientesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/giros', component: () => import('../pages/GirosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/inspectores', component: () => import('../pages/InspectoresPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/itse', component: () => import('../pages/ItsePage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/licencias-funcionamiento', component: () => import('../pages/LicenciasFuncionamientoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/niveles-riesgo', component: () => import('../pages/NivelesRiesgoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/personas', component: () => import('../pages/PersonasPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/tipos-documento-identidad', component: () => import('../pages/TiposDocumentoIdentidadPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/tipos-licencia', component: () => import('../pages/TiposLicenciaPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/tipos-procedimiento-tupa', component: () => import('../pages/TiposProcedimientoTupaPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/unidades-organicas', component: () => import('../pages/UnidadesOrganicasPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/usuarios', component: () => import('../pages/UsuariosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } },
-      { path: 'admin/zonificaciones', component: () => import('../pages/ZonificacionesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] } }
+      { path: 'admin/estados', component: () => import('../pages/EstadosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/expedientes', component: () => import('../pages/ExpedientesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['expedientes'] } },
+      { path: 'admin/giros', component: () => import('../pages/GirosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/inspectores', component: () => import('../pages/InspectoresPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
+      { path: 'admin/itse', component: () => import('../pages/ItsePage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
+      { path: 'admin/licencias-funcionamiento', component: () => import('../pages/LicenciasFuncionamientoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['licencias'] } },
+      { path: 'admin/niveles-riesgo', component: () => import('../pages/NivelesRiesgoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/personas', component: () => import('../pages/PersonasPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['expedientes', 'licencias', 'itse', 'admin'] } },
+      { path: 'admin/tipos-documento-identidad', component: () => import('../pages/TiposDocumentoIdentidadPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/tipos-licencia', component: () => import('../pages/TiposLicenciaPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/tipos-procedimiento-tupa', component: () => import('../pages/TiposProcedimientoTupaPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/unidades-organicas', component: () => import('../pages/UnidadesOrganicasPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/usuarios', component: () => import('../pages/UsuariosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/zonificaciones', component: () => import('../pages/ZonificacionesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } }
     ]
   },
   { path: '/:pathMatch(.*)*', redirect: '/' }
@@ -69,7 +70,11 @@ export const router = createRouter({
   routes,
 });
 
-router.beforeEach((to) => {
+// Rol y accesos se releen del servidor una vez por carga de la app: si un administrador
+// los cambió, aplican al recargar sin tener que cerrar sesión.
+let usuarioVerificado = false;
+
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
   const isAuthenticated = !!authStore.token;
 
@@ -78,6 +83,17 @@ router.beforeEach((to) => {
   }
   if (to.meta.public && isAuthenticated) {
     return { name: 'root' };
+  }
+  if (isAuthenticated && !usuarioVerificado) {
+    try {
+      await authStore.refrescarUsuario();
+      usuarioVerificado = true;
+    } catch {
+      // Sesión vencida: el cliente HTTP ya redirige al login
+    }
+  }
+  if (to.meta.permisos && !authStore.puede(to.meta.permisos as Permiso[])) {
+    return '/admin';
   }
   if (to.meta.allowedRoles) {
     // Solo bloquear si el usuario tiene un rol conocido y explícitamente no coincide

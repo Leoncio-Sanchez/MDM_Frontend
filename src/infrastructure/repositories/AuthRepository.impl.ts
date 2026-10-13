@@ -3,34 +3,38 @@ import type { LoginCredentials } from '../../domain/entities/LoginCredentials.en
 import type { User } from '../../domain/entities/User.entity';
 import { httpClient } from '../http/axios.client';
 
+/** Respuesta de GET /auth/users/me/ */
+interface UsuarioActualDTO {
+  id: number;
+  username: string;
+  email: string;
+  role: User['role'];
+  permisos: NonNullable<User['permisos']>;
+}
+
+const aUsuario = (dto: UsuarioActualDTO): User => ({
+  id: dto.id,
+  username: dto.username,
+  email: dto.email,
+  role: dto.role,
+  permisos: dto.permisos,
+});
+
 export class AuthRepositoryImpl implements AuthRepositoryPort {
   async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
     const { data } = await httpClient.post('/auth/jwt/create/', credentials);
-    
-    const token = data.access;
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    const payload = JSON.parse(jsonPayload);
-
-    const username = payload.username ?? payload.sub ?? 'unknown';
-    const role = payload.role ?? 'unknown';
+    const token: string = data.access;
 
     if (data.refresh) {
       localStorage.setItem('auth-refresh-token', data.refresh);
     }
 
-    return { 
-      user: { 
-        id: payload.id ?? payload.user_id, 
-        username: username, 
-        role: role, 
-        ruc: payload.ruc ?? null 
-      }, 
-      token: token 
-    };
+    // El token aún no está guardado en el store: se envía explícitamente
+    const { data: me } = await httpClient.get<UsuarioActualDTO>('/auth/users/me/', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    return { user: aUsuario(me), token };
   }
 
   async logout(): Promise<void> {
@@ -39,6 +43,7 @@ export class AuthRepositoryImpl implements AuthRepositoryPort {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    return null;
+    const { data } = await httpClient.get<UsuarioActualDTO>('/auth/users/me/');
+    return aUsuario(data);
   }
 }

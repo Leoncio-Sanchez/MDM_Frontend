@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../../infrastructure/store/useAuthStore';
 import { useUiStore } from '../../../infrastructure/store/useUiStore';
+import type { Permiso } from '../../../domain/entities/User.entity';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const uiStore = useUiStore();
 
@@ -120,6 +122,18 @@ const adminSections: NavSection[] = [
     ]
   }
 ];
+
+// Solo las opciones que el perfil del usuario permite (los accesos se definen en el router)
+const seccionesVisibles = computed(() =>
+  adminSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        authStore.puede(router.resolve(item.to).meta.permisos as Permiso[] | undefined)
+      ),
+    }))
+    .filter((section) => section.items.length > 0)
+);
 
 const isItemActive = (item: NavItem): boolean => {
   if (item.exact) {
@@ -256,7 +270,7 @@ const isItemActive = (item: NavItem): boolean => {
       <!-- Vista para Administrador Municipal: Secciones Dinámicas con Árbol -->
       <template v-if="user?.role === 'ADMIN_MUNICIPALIDAD'">
         <div 
-          v-for="(section, sIdx) in adminSections" 
+          v-for="(section, sIdx) in seccionesVisibles" 
           :key="section.title" 
           :class="sIdx > 0 && isCollapsed ? 'pt-2' : ''"
         >

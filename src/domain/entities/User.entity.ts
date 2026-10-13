@@ -6,6 +6,10 @@
  * @method Ruta A — Golden Source Validado
  */
 
+/** Accesos del perfil operativo (usuarios_perfiles). */
+export type Permiso = 'expedientes' | 'licencias' | 'itse' | 'admin';
+export type Permisos = Record<Permiso, boolean>;
+
 export interface User {
   id: string | number;
   username: string;
@@ -13,4 +17,5 @@ export interface User {
   email?: string;
   isActive?: boolean;
   ruc?: string;
+  permisos?: Permisos;
 }

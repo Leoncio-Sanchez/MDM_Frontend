@@ -1,13 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
+import type { MaybeRefOrGetter } from 'vue';
 import { container } from '../../composition/container';
 import type { LicenciaPayload, InactivarLicenciaPayload } from '../../domain/entities/LicenciasFuncionamiento.entity';
 
 const KEY = ['licenciasFuncionamiento'] as const;
 
 /** Lista todas las licencias de funcionamiento */
-export function useLicenciasFuncionamientoList() {
+export function useLicenciasFuncionamientoList(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({
     queryKey: KEY,
+    enabled,
     queryFn: () => container.licenciasFuncionamiento.getAll(),
     staleTime: 1000 * 60 * 5,
   });

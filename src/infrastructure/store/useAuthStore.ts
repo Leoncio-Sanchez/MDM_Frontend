@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { container } from '../../composition/container';
-import type { User } from '../../domain/entities/User.entity';
+import type { Permiso, User } from '../../domain/entities/User.entity';
 import type { LoginCredentials } from '../../domain/entities/LoginCredentials.entity';
 
 export const useAuthStore = defineStore('auth', () => {
@@ -13,6 +13,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Getters (computed)
   const isAuthenticated = computed(() => user.value !== null && token.value !== null);
+
+  /** ¿Tiene alguno de los accesos indicados? Sin lista, no exige ninguno. */
+  function puede(permisos?: Permiso[]): boolean {
+    if (!permisos || permisos.length === 0) return true;
+    return permisos.some((p) => user.value?.permisos?.[p] === true);
+  }
 
   // Actions
   function setUser(newUser: User, newToken: string) {
@@ -40,6 +46,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Vuelve a leer rol y accesos del servidor (p. ej. si un administrador los cambió). */
+  async function refrescarUsuario() {
+    if (!token.value) return;
+    const actual = await container.auth.getCurrentUser();
+    if (actual) user.value = actual;
+  }
+
   async function logout() {
     try {
       await container.auth.logout();
@@ -56,10 +69,12 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     // Getters
     isAuthenticated,
+    puede,
     // Actions
     setUser,
     clearUser,
     login,
+    refrescarUsuario,
     logout,
   };
 }, {

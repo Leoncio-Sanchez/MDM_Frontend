@@ -12,12 +12,16 @@ import {
 import { useFormDraft } from '../../application/composables/useFormDraft';
 import { httpClient } from '../../infrastructure/http/axios.client';
 import { useToast, extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
+import { useAuthStore } from '../../infrastructure/store/useAuthStore';
+import { useRouter } from 'vue-router';
 
 const { data, isLoading } = useUsuariosList();
 const crear = useCrearUsuarios();
 const actualizar = useActualizarUsuarios();
 const eliminar = useEliminarUsuarios();
 const toast = useToast();
+const authStore = useAuthStore();
+const router = useRouter();
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
@@ -217,6 +221,11 @@ const handleSubmit = async () => {
       { id: editingId.value, data: payload },
       {
         onSuccess: async () => {
+          // Si editó su propia cuenta, el menú refleja sus nuevos accesos al instante
+          if (Number(editingId.value) === Number(authStore.user?.id)) {
+            await authStore.refrescarUsuario().catch(() => undefined);
+            if (!authStore.puede(['admin'])) router.push('/admin');
+          }
           if (changePassword.value && form.value.password) {
             try {
               await httpClient.patch(`/lf-itse/usuarios/${editingId.value}/cambiar-password`, {

@@ -156,6 +156,8 @@ const emit = defineEmits<{
               {{ String(row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '') }}
             </td>
             <td v-if="!soloLectura" class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <!-- Acciones propias de cada pantalla (p. ej. "Archivos"), antes de Editar / Eliminar -->
+              <slot name="acciones-fila" :row="row" />
               <button
                 @click="emit('edit', row)"
                 class="text-[#0d6efd] dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mr-4 font-semibold hover:underline cursor-pointer"

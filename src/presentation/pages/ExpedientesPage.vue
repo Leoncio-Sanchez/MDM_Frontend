@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import CrudTable from '../components/organisms/CrudTable.vue';
+import ArchivosAdjuntos from '../components/organisms/ArchivosAdjuntos.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import { useToast, useDialog } from '../../infrastructure/store/useNotificationStore';
 import SearchableSelect, { type SelectOption } from '../components/molecules/SearchableSelect.vue';
@@ -214,6 +215,12 @@ const handleSubmit = () => {
     });
   }
 };
+
+// ── Archivos adjuntos (actas, fotos, documentos) ─────────────────────
+const archivosDe = ref<{ id: number; titulo: string } | null>(null);
+const abrirArchivos = (row: { id: number; numero_expediente?: string | number }) => {
+  archivosDe.value = { id: row.id, titulo: `Expediente N° ${row.numero_expediente ?? row.id}` };
+};
 </script>
 
 <template>
@@ -225,7 +232,24 @@ const handleSubmit = () => {
       :is-loading="isLoading"
       @add="handleAdd"
       @edit="handleEdit"
-      @delete="handleDelete"
+      @delete="handleDelete">
+      <template #acciones-fila="{ row }">
+        <button
+          type="button"
+          class="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white mr-4 font-semibold hover:underline cursor-pointer"
+          @click="abrirArchivos(row)"
+        >
+          Archivos
+        </button>
+      </template>
+    </CrudTable>
+
+    <ArchivosAdjuntos
+      :open="archivosDe !== null"
+      modulo="expedientes"
+      :registro-id="archivosDe?.id ?? null"
+      :titulo="archivosDe?.titulo ?? ''"
+      @close="archivosDe = null"
     />
 
     <!-- Modal Grande de Registro / Edición de Expedientes con Persistencia LocalStorage -->

@@ -1,3 +1,4 @@
+import { ArchivosRepositoryImpl } from '../infrastructure/repositories/ArchivosRepository.impl';
 import { AuthRepositoryImpl } from '../infrastructure/repositories/AuthRepository.impl';
 import { ConsultaPublicaRepositoryImpl } from '../infrastructure/repositories/ConsultaPublicaRepository.impl';
 import { DashboardRepositoryImpl } from '../infrastructure/repositories/DashboardRepository.impl';
@@ -17,6 +18,7 @@ import { UnidadesOrganicasRepositoryImpl } from '../infrastructure/repositories/
 import { UsuariosRepositoryImpl } from '../infrastructure/repositories/UsuariosRepository.impl';
 import { ZonificacionesRepositoryImpl } from '../infrastructure/repositories/ZonificacionesRepository.impl';
 
+import type { ArchivosRepositoryPort } from '../domain/ports/ArchivosRepository.port';
 import type { AuthRepositoryPort } from '../domain/ports/AuthRepository.port';
 import type { ConsultaPublicaRepositoryPort } from '../domain/ports/ConsultaPublicaRepository.port';
 import type { DashboardRepositoryPort } from '../domain/ports/DashboardRepository.port';
@@ -37,6 +39,7 @@ import type { UsuariosRepositoryPort } from '../domain/ports/UsuariosRepository.
 import type { ZonificacionesRepositoryPort } from '../domain/ports/ZonificacionesRepository.port';
 
 export interface Container {
+  archivos: ArchivosRepositoryPort;
   auth: AuthRepositoryPort;
   consultaPublica: ConsultaPublicaRepositoryPort;
   dashboard: DashboardRepositoryPort;
@@ -58,6 +61,7 @@ export interface Container {
 }
 
 export const container: Container = {
+  archivos: new ArchivosRepositoryImpl(),
   auth: new AuthRepositoryImpl(),
   consultaPublica: new ConsultaPublicaRepositoryImpl(),
   dashboard: new DashboardRepositoryImpl(),

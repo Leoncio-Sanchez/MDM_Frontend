@@ -12,6 +12,7 @@ import { useNivelesRiesgoList } from '../../application/composables/useNivelesRi
 import { useEstadosInactivosItse } from '../../application/composables/useEstados';
 import { useFormDraft } from '../../application/composables/useFormDraft';
 import CrudTable from '../components/organisms/CrudTable.vue';
+import ArchivosAdjuntos from '../components/organisms/ArchivosAdjuntos.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import SearchableSelect, { type SelectOption } from '../components/molecules/SearchableSelect.vue';
 import { useToast, extractErrorMessage, extractFieldErrors } from '../../infrastructure/store/useNotificationStore';
@@ -366,6 +367,12 @@ const inputClass =
   'w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 disabled:bg-neutral-100 dark:disabled:bg-neutral-800 disabled:cursor-not-allowed transition-all';
 const errorInputClass = 'border-red-400 dark:border-red-700 focus:border-red-500 focus:ring-red-500/20';
 const hintClass = 'text-[11px] text-neutral-400 dark:text-neutral-500 mt-1';
+
+// ── Archivos adjuntos (actas, fotos, documentos) ─────────────────────
+const archivosDe = ref<{ id: number; titulo: string } | null>(null);
+const abrirArchivos = (row: { id: number; numero_itse?: string | number }) => {
+  archivosDe.value = { id: row.id, titulo: `Certificado ITSE N° ${row.numero_itse ?? row.id}` };
+};
 </script>
 
 <template>
@@ -382,7 +389,24 @@ const hintClass = 'text-[11px] text-neutral-400 dark:text-neutral-500 mt-1';
       delete-label="Inactivar"
       @add="handleAdd"
       @edit="handleEdit"
-      @delete="handleInactivar"
+      @delete="handleInactivar">
+      <template #acciones-fila="{ row }">
+        <button
+          type="button"
+          class="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white mr-4 font-semibold hover:underline cursor-pointer"
+          @click="abrirArchivos(row)"
+        >
+          Archivos
+        </button>
+      </template>
+    </CrudTable>
+
+    <ArchivosAdjuntos
+      :open="archivosDe !== null"
+      modulo="itse"
+      :registro-id="archivosDe?.id ?? null"
+      :titulo="archivosDe?.titulo ?? ''"
+      @close="archivosDe = null"
     />
 
     <!-- Registro / edición de certificado ITSE -->

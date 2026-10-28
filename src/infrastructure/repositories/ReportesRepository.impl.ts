@@ -1,5 +1,11 @@
 import type { ReportesRepositoryPort } from '../../domain/ports/ReportesRepository.port';
-import type { InformePdf, PadronLicencias } from '../../domain/entities/Reportes.entity';
+import type {
+  InformePdf,
+  PadronLicencias,
+  ReporteBajas,
+  ReporteImprocedentes,
+  TipoAuditoria,
+} from '../../domain/entities/Reportes.entity';
 import { httpClient } from '../http/axios.client';
 
 export class ReportesRepositoryImpl implements ReportesRepositoryPort {
@@ -7,6 +13,16 @@ export class ReportesRepositoryImpl implements ReportesRepositoryPort {
     const { data } = await httpClient.get<PadronLicencias>('/lf-itse/reportes/licencias/', {
       params: desde && hasta ? { desde, hasta } : {},
     });
+    return data;
+  }
+
+  async bajas(tipo: TipoAuditoria, desde: string, hasta: string): Promise<ReporteBajas> {
+    const { data } = await httpClient.get<ReporteBajas>(`/lf-itse/reportes/bajas/${tipo}/`, { params: { desde, hasta } });
+    return data;
+  }
+
+  async improcedentes(tipo: TipoAuditoria, desde: string, hasta: string): Promise<ReporteImprocedentes> {
+    const { data } = await httpClient.get<ReporteImprocedentes>(`/lf-itse/reportes/improcedentes/${tipo}/`, { params: { desde, hasta } });
     return data;
   }
 

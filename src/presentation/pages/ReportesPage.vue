@@ -1,10 +1,13 @@
 <script setup lang="ts">
 /**
  * Reportes gerenciales. Basado en la pantalla del Corte 2 (equipo), ampliado a los 3 reportes
- * acordados y con cifras calculadas por el servidor (no valores fijos).
+ * acordados más los 2 de auditoría (OCI), con cifras calculadas por el servidor (no valores fijos).
  */
 import { computed, ref, watch } from 'vue';
 import CrudTable from '../components/organisms/CrudTable.vue';
+import ReporteBajas from '../components/organisms/ReporteBajas.vue';
+import ReporteImprocedentes from '../components/organisms/ReporteImprocedentes.vue';
+import SelectorPeriodo from '../components/molecules/SelectorPeriodo.vue';
 import Skeleton from '../components/atoms/Skeleton.vue';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 import { usePadronLicencias } from '../../application/composables/useReportes';
@@ -14,73 +17,44 @@ import { usePersonasList } from '../../application/composables/usePersonas';
 import { extractErrorMessage, useToast } from '../../infrastructure/store/useNotificationStore';
 import { container } from '../../composition/container';
 import { descargarCsv } from '../utils/csv';
-import { diasHasta, formatoFecha, hoyISO } from '../utils/fechas';
-import type { LicenciaPadron } from '../../domain/entities/Reportes.entity';
+import { diasHasta, esMesCompleto, formatoFecha, hoyISO, nombrePeriodo, rangoMes } from '../utils/fechas';
+import type { LicenciaPadron, TipoAuditoria } from '../../domain/entities/Reportes.entity';
 import type { FiltroPorRenovar, Itse } from '../../domain/entities/Itse.entity';
 import type { ExpedientePendiente } from '../../domain/entities/Expedientes.entity';
 import type { Personas } from '../../domain/entities/Personas.entity';
 
 const authStore = useAuthStore();
 
-type Pestana = 'licencias' | 'itse' | 'expedientes';
+type Pestana = 'licencias' | 'itse' | 'expedientes' | 'bajas' | 'improcedentes';
+
+// Reportes de auditoría (OCI): cada usuario ve solo los tipos de su acceso
+const tiposAuditoria = computed<TipoAuditoria[]>(() =>
+  (['licencias', 'itse'] as const).filter((t) => authStore.puede([t])),
+);
+
 const pestanas = computed(() =>
   ([
     { id: 'licencias', titulo: 'Padrón de licencias', visible: authStore.puede(['licencias']) },
     { id: 'itse', titulo: 'ITSE por vencer', visible: authStore.puede(['itse']) },
     { id: 'expedientes', titulo: 'Expedientes en riesgo de plazo', visible: authStore.puede(['expedientes', 'licencias', 'itse']) },
+    { id: 'bajas', titulo: 'Anuladas y revocadas', visible: tiposAuditoria.value.length > 0 },
+    { id: 'improcedentes', titulo: 'Improcedentes', visible: tiposAuditoria.value.length > 0 },
   ] as { id: Pestana; titulo: string; visible: boolean }[]).filter((p) => p.visible),
 );
 const activa = ref<Pestana>(pestanas.value[0]?.id ?? 'expedientes');
 
 // ── 1. Padrón de licencias ───────────────────────────────────────────
-const primerDiaMes = (desplazamiento = 0) => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth() + desplazamiento, 1);
-};
-const aISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const rangoMes = (desplazamiento: number) => {
-  const inicio = primerDiaMes(desplazamiento);
-  const fin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0);
-  return { desde: aISO(inicio), hasta: aISO(fin) };
-};
-
 const rango = ref(rangoMes(0));
-const desdeInput = ref(rango.value.desde);
-const hastaInput = ref(rango.value.hasta);
-const errorRango = ref<string | null>(null);
-
-const aplicarRango = () => {
-  if (!desdeInput.value || !hastaInput.value) return (errorRango.value = 'Indique ambas fechas.');
-  if (hastaInput.value < desdeInput.value) return (errorRango.value = 'La fecha de fin no puede ser anterior a la de inicio.');
-  errorRango.value = null;
-  rango.value = { desde: desdeInput.value, hasta: hastaInput.value };
-};
-const elegirMes = (desplazamiento: number) => {
-  rango.value = rangoMes(desplazamiento);
-  desdeInput.value = rango.value.desde;
-  hastaInput.value = rango.value.hasta;
-  errorRango.value = null;
-};
 
 const puedeLicencias = computed(() => authStore.puede(['licencias']));
 const padron = usePadronLicencias(rango, puedeLicencias);
 const resumen = computed(() => padron.data.value?.resumen);
-
-const esMesCompleto = computed(() => {
-  const [y, m] = rango.value.desde.split('-').map(Number);
-  return rango.value.desde.endsWith('-01') && rango.value.hasta === aISO(new Date(y, m, 0));
-});
-const nombreMes = computed(() => {
-  const [y, m] = rango.value.desde.split('-').map(Number);
-  return esMesCompleto.value
-    ? new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1))
-    : `${formatoFecha(rango.value.desde)} al ${formatoFecha(rango.value.hasta)}`;
-});
+const nombreMes = computed(() => nombrePeriodo(rango.value));
 
 // Informe formal numerado: solo por mes completo (el servidor lo vuelve a validar)
 const toast = useToast();
 const generandoPdf = ref(false);
-const puedeInformePdf = computed(() => esMesCompleto.value && rango.value.desde <= hoyISO());
+const puedeInformePdf = computed(() => esMesCompleto(rango.value) && rango.value.desde <= hoyISO());
 const descargarInformePdf = async () => {
   generandoPdf.value = true;
   try {
@@ -244,8 +218,6 @@ const botonFiltro = (activo: boolean) => [
     ? 'border-[#0d6efd] bg-[#0d6efd] text-white'
     : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 bg-white dark:bg-[#18181b] hover:bg-neutral-100 dark:hover:bg-neutral-800',
 ];
-const esMesActual = computed(() => rango.value.desde === rangoMes(0).desde && rango.value.hasta === rangoMes(0).hasta);
-const esMesAnterior = computed(() => rango.value.desde === rangoMes(-1).desde && rango.value.hasta === rangoMes(-1).hasta);
 </script>
 
 <template>
@@ -278,21 +250,7 @@ const esMesAnterior = computed(() => rango.value.desde === rangoMes(-1).desde &&
     <!-- 1. Padrón de licencias -->
     <section v-if="activa === 'licencias'" role="tabpanel" class="space-y-4">
       <div :class="[tarjeta, 'flex flex-col lg:flex-row lg:items-end gap-4']">
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" :class="botonFiltro(esMesActual)" @click="elegirMes(0)">Este mes</button>
-          <button type="button" :class="botonFiltro(esMesAnterior)" @click="elegirMes(-1)">Mes anterior</button>
-        </div>
-        <div class="flex flex-wrap items-end gap-2">
-          <label class="text-xs text-neutral-600 dark:text-neutral-300">
-            Desde
-            <input v-model="desdeInput" type="date" class="block mt-1 h-9 px-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#18181b] text-sm" />
-          </label>
-          <label class="text-xs text-neutral-600 dark:text-neutral-300">
-            Hasta
-            <input v-model="hastaInput" type="date" class="block mt-1 h-9 px-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#18181b] text-sm" />
-          </label>
-          <button type="button" :class="botonFiltro(false)" class="h-9" @click="aplicarRango">Aplicar</button>
-        </div>
+        <SelectorPeriodo v-model="rango" />
         <div class="flex flex-wrap gap-2 lg:ml-auto">
           <button
             type="button"
@@ -308,7 +266,6 @@ const esMesAnterior = computed(() => rango.value.desde === rangoMes(-1).desde &&
           </button>
         </div>
       </div>
-      <p v-if="errorRango" role="alert" class="text-xs text-red-600 dark:text-red-400">{{ errorRango }}</p>
 
       <p v-if="padron.isError.value" role="alert" class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-700 dark:text-red-300">
         No se pudo cargar el padrón: {{ extractErrorMessage(padron.error.value) }}
@@ -412,6 +369,16 @@ const esMesAnterior = computed(() => rango.value.desde === rangoMes(-1).desde &&
         texto-vacio="Ningún expediente está en riesgo de vencer su plazo."
         solo-lectura
       />
+    </section>
+
+    <!-- 4. Auditoría: anuladas y revocadas -->
+    <section v-if="activa === 'bajas'" role="tabpanel">
+      <ReporteBajas :tipos="tiposAuditoria" />
+    </section>
+
+    <!-- 5. Auditoría: expedientes improcedentes -->
+    <section v-if="activa === 'improcedentes'" role="tabpanel">
+      <ReporteImprocedentes :tipos="tiposAuditoria" />
     </section>
   </div>
 </template>

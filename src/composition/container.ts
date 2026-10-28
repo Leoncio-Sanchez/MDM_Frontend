@@ -3,6 +3,7 @@ import { AuthRepositoryImpl } from '../infrastructure/repositories/AuthRepositor
 import { ConsultaPublicaRepositoryImpl } from '../infrastructure/repositories/ConsultaPublicaRepository.impl';
 import { DashboardRepositoryImpl } from '../infrastructure/repositories/DashboardRepository.impl';
 import { PideRepositoryImpl } from '../infrastructure/repositories/PideRepository.impl';
+import { ReportesRepositoryImpl } from '../infrastructure/repositories/ReportesRepository.impl';
 import { EstadosRepositoryImpl } from '../infrastructure/repositories/EstadosRepository.impl';
 import { ExpedientesRepositoryImpl } from '../infrastructure/repositories/ExpedientesRepository.impl';
 import { GirosRepositoryImpl } from '../infrastructure/repositories/GirosRepository.impl';
@@ -23,6 +24,7 @@ import type { AuthRepositoryPort } from '../domain/ports/AuthRepository.port';
 import type { ConsultaPublicaRepositoryPort } from '../domain/ports/ConsultaPublicaRepository.port';
 import type { DashboardRepositoryPort } from '../domain/ports/DashboardRepository.port';
 import type { PideServicePort } from '../domain/ports/ExternalServices.port';
+import type { ReportesRepositoryPort } from '../domain/ports/ReportesRepository.port';
 import type { EstadosRepositoryPort } from '../domain/ports/EstadosRepository.port';
 import type { ExpedientesRepositoryPort } from '../domain/ports/ExpedientesRepository.port';
 import type { GirosRepositoryPort } from '../domain/ports/GirosRepository.port';
@@ -44,6 +46,7 @@ export interface Container {
   consultaPublica: ConsultaPublicaRepositoryPort;
   dashboard: DashboardRepositoryPort;
   pide: PideServicePort;
+  reportes: ReportesRepositoryPort;
   estados: EstadosRepositoryPort;
   expedientes: ExpedientesRepositoryPort;
   giros: GirosRepositoryPort;
@@ -66,6 +69,7 @@ export const container: Container = {
   consultaPublica: new ConsultaPublicaRepositoryImpl(),
   dashboard: new DashboardRepositoryImpl(),
   pide: new PideRepositoryImpl(),
+  reportes: new ReportesRepositoryImpl(),
   estados: new EstadosRepositoryImpl(),
   expedientes: new ExpedientesRepositoryImpl(),
   giros: new GirosRepositoryImpl(),

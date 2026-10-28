@@ -1,276 +1,376 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { httpClient } from '../../infrastructure/http/axios.client';
+/**
+ * Reportes gerenciales. Basado en la pantalla del Corte 2 (equipo), ampliado a los 3 reportes
+ * acordados y con cifras calculadas por el servidor (no valores fijos).
+ */
+import { computed, ref, watch } from 'vue';
+import CrudTable from '../components/organisms/CrudTable.vue';
+import Skeleton from '../components/atoms/Skeleton.vue';
+import { useAuthStore } from '../../infrastructure/store/useAuthStore';
+import { usePadronLicencias } from '../../application/composables/useReportes';
+import { useItsePorRenovar } from '../../application/composables/useItse';
+import { useExpedientesPendientes } from '../../application/composables/useExpedientes';
+import { usePersonasList } from '../../application/composables/usePersonas';
+import { extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
+import { descargarCsv } from '../utils/csv';
+import { diasHasta, formatoFecha, hoyISO } from '../utils/fechas';
+import type { LicenciaPadron } from '../../domain/entities/Reportes.entity';
+import type { FiltroPorRenovar, Itse } from '../../domain/entities/Itse.entity';
+import type { ExpedientePendiente } from '../../domain/entities/Expedientes.entity';
+import type { Personas } from '../../domain/entities/Personas.entity';
 
-interface LicenciaReporteItem {
-  id: number;
-  numero_licencia: number;
-  nombre_comercial: string;
-  actividad?: string;
-  direccion?: string;
-  fecha_emision: string;
-  tipo_licencia_id?: number;
-  giros?: Array<{ id: number; giro_id: number; nombre?: string }>;
-  estado_nombre?: string;
-}
+const authStore = useAuthStore();
 
-const cargando = ref(false);
-const errorMensaje = ref<string | null>(null);
-const licencias = ref<LicenciaReporteItem[]>([]);
+type Pestana = 'licencias' | 'itse' | 'expedientes';
+const pestanas = computed(() =>
+  ([
+    { id: 'licencias', titulo: 'Padrón de licencias', visible: authStore.puede(['licencias']) },
+    { id: 'itse', titulo: 'ITSE por vencer', visible: authStore.puede(['itse']) },
+    { id: 'expedientes', titulo: 'Expedientes en riesgo de plazo', visible: authStore.puede(['expedientes', 'licencias', 'itse']) },
+  ] as { id: Pestana; titulo: string; visible: boolean }[]).filter((p) => p.visible),
+);
+const activa = ref<Pestana>(pestanas.value[0]?.id ?? 'expedientes');
 
-// Filtros reactivos
-const filtroFechaInicio = ref('');
-const filtroFechaFin = ref('');
-const filtroNumero = ref('');
-
-const cargarReporte = async () => {
-  cargando.value = true;
-  errorMensaje.value = null;
-  try {
-    const params: Record<string, string | number> = {};
-    if (filtroFechaInicio.value) params.fecha_inicio = filtroFechaInicio.value;
-    if (filtroFechaFin.value) params.fecha_fin = filtroFechaFin.value;
-    if (filtroNumero.value) params.numero_licencia = filtroNumero.value;
-
-    const { data } = await httpClient.get('/lf-itse/licencias-funcionamiento/reporte', { params });
-    licencias.value = Array.isArray(data) ? data : (data.data || []);
-  } catch (err: any) {
-    errorMensaje.value = err?.response?.data?.error || 'Error al obtener el reporte de licencias.';
-  } finally {
-    cargando.value = false;
-  }
+// ── 1. Padrón de licencias ───────────────────────────────────────────
+const primerDiaMes = (desplazamiento = 0) => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth() + desplazamiento, 1);
+};
+const aISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const rangoMes = (desplazamiento: number) => {
+  const inicio = primerDiaMes(desplazamiento);
+  const fin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 0);
+  return { desde: aISO(inicio), hasta: aISO(fin) };
 };
 
-const limpiarFiltros = () => {
-  filtroFechaInicio.value = '';
-  filtroFechaFin.value = '';
-  filtroNumero.value = '';
-  cargarReporte();
+const rango = ref(rangoMes(0));
+const desdeInput = ref(rango.value.desde);
+const hastaInput = ref(rango.value.hasta);
+const errorRango = ref<string | null>(null);
+
+const aplicarRango = () => {
+  if (!desdeInput.value || !hastaInput.value) return (errorRango.value = 'Indique ambas fechas.');
+  if (hastaInput.value < desdeInput.value) return (errorRango.value = 'La fecha de fin no puede ser anterior a la de inicio.');
+  errorRango.value = null;
+  rango.value = { desde: desdeInput.value, hasta: hastaInput.value };
+};
+const elegirMes = (desplazamiento: number) => {
+  rango.value = rangoMes(desplazamiento);
+  desdeInput.value = rango.value.desde;
+  hastaInput.value = rango.value.hasta;
+  errorRango.value = null;
 };
 
-// Métricas computadas
-const totalEmitidas = computed(() => licencias.value.length);
+const puedeLicencias = computed(() => authStore.puede(['licencias']));
+const padron = usePadronLicencias(rango, puedeLicencias);
+const resumen = computed(() => padron.data.value?.resumen);
 
-const tiempoPromedioDias = computed(() => {
-  return 3.2; // Meta institucional cumplida <= 4 días hábiles
+const nombreMes = computed(() => {
+  const [y, m] = rango.value.desde.split('-').map(Number);
+  const esMesCompleto = rango.value.desde.endsWith('-01') && rango.value.hasta === aISO(new Date(y, m, 0));
+  return esMesCompleto
+    ? new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1))
+    : `${formatoFecha(rango.value.desde)} al ${formatoFecha(rango.value.hasta)}`;
 });
 
-const topGiros = computed(() => {
-  const conteo: Record<string, number> = {};
-  for (const item of licencias.value) {
-    const act = item.actividad || 'Comercio General';
-    conteo[act] = (conteo[act] || 0) + 1;
-  }
-  return Object.entries(conteo)
-    .map(([giro, total]) => ({ giro, total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
-});
+const columnasPadron = [
+  { key: 'numero_licencia', label: 'N° LICENCIA' },
+  { key: 'numero_expediente', label: 'N° EXPEDIENTE' },
+  { key: 'nombre_comercial', label: 'NOMBRE COMERCIAL' },
+  { key: 'titular', label: 'TITULAR' },
+  { key: 'documento_titular', label: 'RUC / DNI' },
+  { key: 'giros', label: 'GIRO' },
+  { key: 'zonificacion', label: 'ZONIFICACIÓN' },
+  { key: 'nivel_riesgo', label: 'RIESGO' },
+  { key: 'fecha_emision', label: 'EMISIÓN' },
+  { key: 'plazo', label: 'ATENCIÓN' },
+];
+const filasPadron = computed(() =>
+  (padron.data.value?.licencias ?? []).map((l) => ({
+    ...l,
+    id: l.numero_licencia,
+    fecha_emision: formatoFecha(l.fecha_emision),
+    plazo: `${l.dias_habiles} de ${l.plazo_dias} días hábiles${l.dentro_de_plazo ? '' : ' (fuera de plazo)'}`,
+  })),
+);
 
-const exportarCSV = () => {
-  if (licencias.value.length === 0) return;
-  const headers = ['ID,Número Licencia,Nombre Comercial,Actividad,Fecha Emisión'];
-  const filas = licencias.value.map(l => 
-    `"${l.id}","${l.numero_licencia}","${l.nombre_comercial.replace(/"/g, '""')}","${l.actividad || ''}","${l.fecha_emision}"`
-  );
-  const blob = new Blob([headers.concat(filas).join('\n')], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `reporte_licencias_morales_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+const exportarPadron = () =>
+  descargarCsv<LicenciaPadron>(`padron_licencias_${rango.value.desde}_${rango.value.hasta}`, [
+    { titulo: 'N° Licencia', valor: (l) => l.numero_licencia },
+    { titulo: 'N° Expediente', valor: (l) => l.numero_expediente },
+    { titulo: 'Nombre comercial', valor: (l) => l.nombre_comercial },
+    { titulo: 'Titular', valor: (l) => l.titular },
+    { titulo: 'RUC / DNI', valor: (l) => l.documento_titular },
+    { titulo: 'Giro', valor: (l) => l.giros },
+    { titulo: 'Zonificación', valor: (l) => l.zonificacion },
+    { titulo: 'Nivel de riesgo', valor: (l) => l.nivel_riesgo },
+    { titulo: 'Tipo de licencia', valor: (l) => l.tipo_licencia },
+    { titulo: 'Fecha de recepción', valor: (l) => formatoFecha(l.fecha_recepcion) },
+    { titulo: 'Fecha de emisión', valor: (l) => formatoFecha(l.fecha_emision) },
+    { titulo: 'Días hábiles de atención', valor: (l) => l.dias_habiles },
+    { titulo: 'Plazo TUPA (días hábiles)', valor: (l) => l.plazo_dias },
+    { titulo: 'Dentro de plazo', valor: (l) => (l.dentro_de_plazo ? 'Sí' : 'No') },
+  ], padron.data.value?.licencias ?? []);
+
+// ── 2. ITSE por vencer ───────────────────────────────────────────────
+const diasItse = ref(30);
+const filtroItse = computed<FiltroPorRenovar>(() => ({ dias: diasItse.value }));
+const puedeItse = computed(() => authStore.puede(['itse']));
+const itse = useItsePorRenovar(filtroItse, puedeItse);
+const { data: personasData } = usePersonasList();
+const personasById = computed(() => new Map((personasData.value ?? []).map((p: Personas) => [p.id, p])));
+const nombrePersona = (id: number) => {
+  const p = personasById.value.get(Number(id));
+  return !p ? '—' : p.tipo_persona === 'J' ? p.nombres : [p.nombres, p.apellido_paterno, p.apellido_materno].filter(Boolean).join(' ');
 };
+const venceEn = (fecha: string) => {
+  const d = diasHasta(fecha);
+  return d === 0 ? 'Hoy' : `En ${d} ${d === 1 ? 'día' : 'días'}`;
+};
+const columnasItse = [
+  { key: 'numero_itse', label: 'N° ITSE' },
+  { key: 'nombre_comercial', label: 'NOMBRE COMERCIAL' },
+  { key: 'titular', label: 'TITULAR' },
+  { key: 'direccion', label: 'DIRECCIÓN' },
+  { key: 'fecha_caducidad', label: 'CADUCA' },
+  { key: 'vence', label: 'VENCE' },
+];
+const filasItse = computed(() =>
+  (itse.data.value ?? []).map((i: Itse) => ({
+    id: i.id,
+    numero_itse: i.numero_itse,
+    nombre_comercial: i.nombre_comercial,
+    titular: nombrePersona(Number(i.titular)),
+    direccion: i.direccion || '—',
+    fecha_caducidad: formatoFecha(i.fecha_caducidad),
+    vence: venceEn(i.fecha_caducidad),
+  })),
+);
+const exportarItse = () =>
+  descargarCsv<Itse>(`itse_por_vencer_${diasItse.value}_dias_${hoyISO()}`, [
+    { titulo: 'N° ITSE', valor: (i) => i.numero_itse },
+    { titulo: 'Nombre comercial', valor: (i) => i.nombre_comercial },
+    { titulo: 'Titular', valor: (i) => nombrePersona(Number(i.titular)) },
+    { titulo: 'Dirección', valor: (i) => i.direccion },
+    { titulo: 'Fecha de caducidad', valor: (i) => formatoFecha(i.fecha_caducidad) },
+    { titulo: 'Vence', valor: (i) => venceEn(i.fecha_caducidad) },
+  ], itse.data.value ?? []);
 
-onMounted(() => {
-  cargarReporte();
+// ── 3. Expedientes en riesgo de plazo ────────────────────────────────
+// La recepción llega con hora en UTC: se muestra en la fecha local (Perú), no cortando el texto
+const fechaLocal = (iso: string) =>
+  iso ? new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(iso)) : '—';
+const pendientes = useExpedientesPendientes();
+const enRiesgo = computed(() =>
+  ((pendientes.data.value ?? []) as ExpedientePendiente[])
+    .filter((e) => e.mostrar_alerta || diasHasta(e.fecha_vencimiento) < 0)
+    .sort((a, b) => a.fecha_vencimiento.localeCompare(b.fecha_vencimiento)),
+);
+const situacionExpediente = (e: ExpedientePendiente) => {
+  const restantes = e.dias_habiles_restantes ?? 0;
+  if (diasHasta(e.fecha_vencimiento) < 0) return `Vencido (${Math.abs(restantes)} ${Math.abs(restantes) === 1 ? 'día hábil' : 'días hábiles'})`;
+  return restantes === 0 ? 'Vence hoy' : `Quedan ${restantes} ${restantes === 1 ? 'día hábil' : 'días hábiles'}`;
+};
+const columnasExpedientes = [
+  { key: 'numero_expediente', label: 'N° EXPEDIENTE' },
+  { key: 'nombre', label: 'PROCEDIMIENTO' },
+  { key: 'persona_nombre', label: 'SOLICITANTE' },
+  { key: 'fecha_recepcion', label: 'RECEPCIÓN' },
+  { key: 'fecha_vencimiento', label: 'VENCE' },
+  { key: 'situacion', label: 'SITUACIÓN' },
+];
+const filasExpedientes = computed(() =>
+  enRiesgo.value.map((e) => ({
+    id: e.id,
+    numero_expediente: e.numero_expediente,
+    nombre: e.nombre,
+    persona_nombre: e.persona_nombre || '—',
+    fecha_recepcion: fechaLocal(e.fecha_recepcion),
+    fecha_vencimiento: formatoFecha(e.fecha_vencimiento),
+    situacion: situacionExpediente(e),
+  })),
+);
+const exportarExpedientes = () =>
+  descargarCsv<ExpedientePendiente>(`expedientes_en_riesgo_${hoyISO()}`, [
+    { titulo: 'N° Expediente', valor: (e) => e.numero_expediente },
+    { titulo: 'Procedimiento', valor: (e) => e.nombre },
+    { titulo: 'Solicitante', valor: (e) => e.persona_nombre },
+    { titulo: 'Fecha de recepción', valor: (e) => fechaLocal(e.fecha_recepcion) },
+    { titulo: 'Fecha límite', valor: (e) => formatoFecha(e.fecha_vencimiento) },
+    { titulo: 'Situación', valor: (e) => situacionExpediente(e) },
+  ], enRiesgo.value);
+
+// Si el acceso cambia y la pestaña activa ya no corresponde, ir a la primera disponible
+watch(pestanas, (lista) => {
+  if (!lista.some((p) => p.id === activa.value) && lista[0]) activa.value = lista[0].id;
 });
+
+const tarjeta = 'bg-white dark:bg-[#18181b] rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xs p-5';
+const botonExportar =
+  'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+const botonFiltro = (activo: boolean) => [
+  'px-3 h-8 rounded-lg text-xs font-semibold border transition-colors cursor-pointer',
+  activo
+    ? 'border-[#0d6efd] bg-[#0d6efd] text-white'
+    : 'border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 bg-white dark:bg-[#18181b] hover:bg-neutral-100 dark:hover:bg-neutral-800',
+];
+const esMesActual = computed(() => rango.value.desde === rangoMes(0).desde && rango.value.hasta === rangoMes(0).hasta);
+const esMesAnterior = computed(() => rango.value.desde === rangoMes(-1).desde && rango.value.hasta === rangoMes(-1).hasta);
 </script>
 
 <template>
-  <div class="space-y-6 p-4 sm:p-6 max-w-7xl mx-auto">
-    <!-- Encabezado del Módulo -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-neutral-200 dark:border-neutral-800 pb-5">
-      <div>
-        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 text-xs font-bold text-[#0B3C5D] dark:text-blue-400 uppercase tracking-wide">
-          <span class="w-1.5 h-1.5 rounded-full bg-[#0B3C5D] dark:bg-blue-400"></span>
-          Inteligencia de Negocio y TUPA
-        </div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-neutral-900 dark:text-white mt-1">
-          Módulo de Reportes Gerenciales
-        </h1>
-        <p class="text-sm text-neutral-500 dark:text-neutral-400">
-          Supervisión estadística de Licencias de Funcionamiento emitidas en la Municipalidad Distrital de Morales.
-        </p>
-      </div>
+  <div class="space-y-4">
+    <div>
+      <h1 class="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white">Reportes</h1>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Informes para control y seguimiento, con exportación a Excel.</p>
+    </div>
 
-      <div class="flex items-center gap-3">
-        <button
-          @click="exportarCSV"
-          :disabled="cargando || licencias.length === 0"
-          class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold shadow-xs transition-colors cursor-pointer"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Exportar CSV
+    <!-- Pestañas -->
+    <div role="tablist" class="flex flex-wrap gap-1 border-b border-neutral-200 dark:border-neutral-800">
+      <button
+        v-for="p in pestanas"
+        :key="p.id"
+        type="button"
+        role="tab"
+        :aria-selected="activa === p.id"
+        :class="[
+          'px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors cursor-pointer',
+          activa === p.id
+            ? 'border-[#0d6efd] text-[#0d6efd] dark:text-blue-400'
+            : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200',
+        ]"
+        @click="activa = p.id"
+      >
+        {{ p.titulo }}
+      </button>
+    </div>
+
+    <!-- 1. Padrón de licencias -->
+    <section v-if="activa === 'licencias'" role="tabpanel" class="space-y-4">
+      <div :class="[tarjeta, 'flex flex-col lg:flex-row lg:items-end gap-4']">
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" :class="botonFiltro(esMesActual)" @click="elegirMes(0)">Este mes</button>
+          <button type="button" :class="botonFiltro(esMesAnterior)" @click="elegirMes(-1)">Mes anterior</button>
+        </div>
+        <div class="flex flex-wrap items-end gap-2">
+          <label class="text-xs text-neutral-600 dark:text-neutral-300">
+            Desde
+            <input v-model="desdeInput" type="date" class="block mt-1 h-9 px-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#18181b] text-sm" />
+          </label>
+          <label class="text-xs text-neutral-600 dark:text-neutral-300">
+            Hasta
+            <input v-model="hastaInput" type="date" class="block mt-1 h-9 px-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-[#18181b] text-sm" />
+          </label>
+          <button type="button" :class="botonFiltro(false)" class="h-9" @click="aplicarRango">Aplicar</button>
+        </div>
+        <button type="button" :class="[botonExportar, 'lg:ml-auto']" :disabled="!padron.data.value?.licencias.length" @click="exportarPadron">
+          Exportar a Excel
         </button>
       </div>
-    </div>
+      <p v-if="errorRango" role="alert" class="text-xs text-red-600 dark:text-red-400">{{ errorRango }}</p>
 
-    <!-- Tarjetas de Métricas KPI -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
-      <div class="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-5 shadow-xs">
-        <div class="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Total Licencias Emitidas</div>
-        <div class="text-3xl font-black text-[#0B3C5D] dark:text-blue-400 mt-2">{{ totalEmitidas }}</div>
-        <div class="text-xs text-neutral-400 mt-1">Registradas y archivadas en base de datos</div>
-      </div>
+      <p v-if="padron.isError.value" role="alert" class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-700 dark:text-red-300">
+        No se pudo cargar el padrón: {{ extractErrorMessage(padron.error.value) }}
+      </p>
 
-      <div class="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-5 shadow-xs">
-        <div class="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Tiempo Promedio Despacho</div>
-        <div class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{{ tiempoPromedioDias }} <span class="text-base font-medium">días hábiles</span></div>
-        <div class="text-xs text-emerald-700 dark:text-emerald-500 mt-1 font-semibold">✓ Cumple meta TUPA (&le; 4 días)</div>
-      </div>
+      <template v-else>
+        <h2 class="text-sm font-bold text-neutral-700 dark:text-neutral-200 first-letter:uppercase">Licencias emitidas — {{ nombreMes }}</h2>
 
-      <div class="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-5 shadow-xs">
-        <div class="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Trazabilidad y Estado</div>
-        <div class="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2">100%</div>
-        <div class="text-xs text-neutral-400 mt-1">Resoluciones con firma y correlativo auditado</div>
-      </div>
-    </div>
-
-    <!-- Barra de Filtros -->
-    <div class="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 sm:p-5 shadow-xs">
-      <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
-        <div>
-          <label class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">Fecha Desde</label>
-          <input
-            v-model="filtroFechaInicio"
-            type="date"
-            class="w-full px-3 py-2 text-sm rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">Fecha Hasta</label>
-          <input
-            v-model="filtroFechaFin"
-            type="date"
-            class="w-full px-3 py-2 text-sm rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">Número de Licencia</label>
-          <input
-            v-model="filtroNumero"
-            type="number"
-            placeholder="Ej. 104"
-            class="w-full px-3 py-2 text-sm rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-
-        <div class="flex gap-2">
-          <button
-            @click="cargarReporte"
-            :disabled="cargando"
-            class="flex-1 px-4 py-2 rounded-lg bg-[#0B3C5D] hover:bg-blue-900 disabled:opacity-50 text-white text-sm font-semibold transition-colors cursor-pointer"
-          >
-            {{ cargando ? 'Filtrando...' : 'Aplicar Filtros' }}
-          </button>
-          <button
-            @click="limpiarFiltros"
-            class="px-3 py-2 rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm font-semibold transition-colors cursor-pointer"
-            title="Limpiar filtros"
-          >
-            Limpiar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sección de Top 5 Giros y Tabla -->
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <!-- Columna Top Giros -->
-      <div class="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-5 shadow-xs lg:col-span-1">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200 mb-3">
-          Top 5 Actividades / Giros
-        </h2>
-        <div v-if="topGiros.length === 0" class="text-xs text-neutral-400 py-4">
-          Sin registros para graficar.
-        </div>
-        <div v-else class="space-y-3">
-          <div v-for="(g, idx) in topGiros" :key="idx" class="space-y-1">
-            <div class="flex justify-between text-xs font-medium text-neutral-700 dark:text-neutral-300">
-              <span class="truncate max-w-[150px]">{{ g.giro }}</span>
-              <span class="font-bold">{{ g.total }}</span>
-            </div>
-            <div class="w-full bg-neutral-100 dark:bg-neutral-800 rounded-full h-1.5">
-              <div
-                class="bg-[#328CC1] h-1.5 rounded-full"
-                :style="{ width: `${Math.min(100, (g.total / totalEmitidas) * 100)}%` }"
-              ></div>
-            </div>
+        <!-- Resumen -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div :class="tarjeta">
+            <p class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Licencias emitidas</p>
+            <Skeleton v-if="padron.isLoading.value" class="h-9 w-16 mt-3" rounded="lg" />
+            <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-2">{{ resumen?.total ?? 0 }}</p>
+          </div>
+          <div :class="tarjeta">
+            <p class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Tiempo promedio de atención</p>
+            <Skeleton v-if="padron.isLoading.value" class="h-9 w-24 mt-3" rounded="lg" />
+            <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-2">
+              <template v-if="resumen?.tiempo_promedio_dias_habiles !== null && resumen?.tiempo_promedio_dias_habiles !== undefined">
+                {{ resumen.tiempo_promedio_dias_habiles.toLocaleString('es-PE') }}
+                <span class="text-sm font-medium text-neutral-500">días hábiles</span>
+              </template>
+              <span v-else class="text-base font-medium text-neutral-400">Sin licencias en el periodo</span>
+            </p>
+            <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1">De la recepción del expediente a la emisión</p>
+          </div>
+          <div :class="tarjeta">
+            <p class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Cumplimiento del plazo TUPA</p>
+            <Skeleton v-if="padron.isLoading.value" class="h-9 w-20 mt-3" rounded="lg" />
+            <template v-else>
+              <p class="text-3xl font-extrabold mt-2" :class="(resumen?.porcentaje_cumplimiento ?? 100) >= 90 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'">
+                {{ resumen?.porcentaje_cumplimiento !== null && resumen?.porcentaje_cumplimiento !== undefined ? `${resumen.porcentaje_cumplimiento.toLocaleString('es-PE')} %` : '—' }}
+              </p>
+              <p class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1">
+                {{ resumen?.dentro_de_plazo ?? 0 }} de {{ resumen?.total ?? 0 }} dentro del plazo de su procedimiento
+              </p>
+            </template>
+          </div>
+          <div :class="tarjeta">
+            <p class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Por nivel de riesgo</p>
+            <Skeleton v-if="padron.isLoading.value" class="h-16 w-full mt-3" rounded="lg" />
+            <ul v-else class="mt-2 space-y-1 text-sm">
+              <li v-for="n in resumen?.por_nivel_riesgo ?? []" :key="n.nivel" class="flex justify-between text-neutral-700 dark:text-neutral-200">
+                <span class="capitalize">{{ n.nivel.toLowerCase().replace('riesgo ', '') }}</span>
+                <span class="font-semibold tabular-nums">{{ n.total }}</span>
+              </li>
+            </ul>
           </div>
         </div>
+
+        <CrudTable
+          title="Padrón de licencias emitidas"
+          :columns="columnasPadron"
+          :data="filasPadron"
+          :is-loading="padron.isLoading.value"
+          texto-vacio="No se emitieron licencias en el periodo elegido."
+          solo-lectura
+        />
+      </template>
+    </section>
+
+    <!-- 2. ITSE por vencer -->
+    <section v-if="activa === 'itse'" role="tabpanel" class="space-y-4">
+      <div :class="[tarjeta, 'flex flex-wrap items-center gap-2']">
+        <span class="text-xs font-semibold text-neutral-600 dark:text-neutral-300">Vencen en los próximos:</span>
+        <button v-for="d in [30, 60, 90]" :key="d" type="button" :class="botonFiltro(diasItse === d)" @click="diasItse = d">{{ d }} días</button>
+        <button type="button" :class="[botonExportar, 'sm:ml-auto']" :disabled="!itse.data.value?.length" @click="exportarItse">Exportar a Excel</button>
       </div>
+      <p v-if="itse.isError.value" role="alert" class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-700 dark:text-red-300">
+        No se pudo cargar el reporte: {{ extractErrorMessage(itse.error.value) }}
+      </p>
+      <CrudTable
+        v-else
+        :title="`Certificados ITSE que vencen en ${diasItse} días`"
+        :columns="columnasItse"
+        :data="filasItse"
+        :is-loading="itse.isLoading.value"
+        :texto-vacio="`Ningún certificado vence en los próximos ${diasItse} días.`"
+        solo-lectura
+      />
+    </section>
 
-      <!-- Tabla Detallada -->
-      <div class="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-xs lg:col-span-3 overflow-hidden">
-        <div class="p-4 sm:p-5 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center">
-          <h2 class="text-sm font-bold uppercase tracking-wider text-neutral-800 dark:text-neutral-200">
-            Detalle Nominal de Licencias
-          </h2>
-          <span class="text-xs text-neutral-500 font-mono">{{ licencias.length }} registros</span>
-        </div>
-
-        <div v-if="cargando" class="p-10 text-center text-sm text-neutral-500">
-          Cargando datos del servidor...
-        </div>
-
-        <div v-else-if="errorMensaje" class="p-6 text-center text-sm text-rose-600 bg-rose-50 dark:bg-rose-950/20">
-          {{ errorMensaje }}
-        </div>
-
-        <div v-else-if="licencias.length === 0" class="p-10 text-center text-sm text-neutral-400">
-          No se encontraron licencias con los filtros seleccionados.
-        </div>
-
-        <div v-else class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-neutral-700 dark:text-neutral-300">
-            <thead class="bg-neutral-50 dark:bg-neutral-800/60 uppercase font-semibold text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
-              <tr>
-                <th class="py-3 px-4">N° Licencia</th>
-                <th class="py-3 px-4">Razón Social / Nombre Comercial</th>
-                <th class="py-3 px-4">Actividad Declarada</th>
-                <th class="py-3 px-4">Fecha Emisión</th>
-                <th class="py-3 px-4">Estado</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-neutral-200 dark:divide-neutral-800">
-              <tr v-for="lic in licencias" :key="lic.id" class="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors">
-                <td class="py-3 px-4 font-mono font-bold text-[#0B3C5D] dark:text-blue-400">
-                  LF-{{ String(lic.numero_licencia).padStart(6, '0') }}
-                </td>
-                <td class="py-3 px-4 font-medium text-neutral-900 dark:text-white">
-                  {{ lic.nombre_comercial }}
-                </td>
-                <td class="py-3 px-4 text-neutral-600 dark:text-neutral-400">
-                  {{ lic.actividad || 'General' }}
-                </td>
-                <td class="py-3 px-4 font-mono text-neutral-500">
-                  {{ lic.fecha_emision }}
-                </td>
-                <td class="py-3 px-4">
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    Vigente
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+    <!-- 3. Expedientes en riesgo de plazo -->
+    <section v-if="activa === 'expedientes'" role="tabpanel" class="space-y-4">
+      <div :class="[tarjeta, 'flex flex-wrap items-center gap-3']">
+        <p class="text-xs text-neutral-600 dark:text-neutral-300">
+          Expedientes en trámite que ya pasaron su fecha de alerta o su plazo TUPA, del más urgente al menos urgente.
+        </p>
+        <button type="button" :class="[botonExportar, 'sm:ml-auto']" :disabled="!enRiesgo.length" @click="exportarExpedientes">Exportar a Excel</button>
       </div>
-    </div>
+      <p v-if="pendientes.isError.value" role="alert" class="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 text-sm text-red-700 dark:text-red-300">
+        No se pudo cargar el reporte: {{ extractErrorMessage(pendientes.error.value) }}
+      </p>
+      <CrudTable
+        v-else
+        title="Expedientes en riesgo de vencer el plazo"
+        :columns="columnasExpedientes"
+        :data="filasExpedientes"
+        :is-loading="pendientes.isLoading.value"
+        texto-vacio="Ningún expediente está en riesgo de vencer su plazo."
+        solo-lectura
+      />
+    </section>
   </div>
 </template>

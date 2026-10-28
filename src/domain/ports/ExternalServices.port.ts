@@ -1,15 +1,31 @@
-/**
- * @source golden-source
- * @origin reconstructed-frontend/src/domain/ports/ExternalServices.port.ts
- * @not-reverse-engineered true
- * @validated-against frontend/assets/index-8L03Lyao.js
- * @method Ruta A — Golden Source Validado
- */
-
-export interface ReniecServicePort {
-  consultarDNI(dni: string): Promise<{ nombres: string; apellidos: string }>;
+/** Datos de una persona según RENIEC (solo lo que usa el formulario; sin foto). */
+export interface PersonaReniec {
+  dni: string;
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  direccion: string;
+  departamento: string;
+  provincia: string;
+  distrito: string;
 }
 
-export interface SunatServicePort {
-  consultarRUC(ruc: string): Promise<{ razonSocial: string; direccion: string }>;
+/** Datos de un contribuyente según SUNAT. */
+export interface ContribuyenteSunat {
+  ruc: string;
+  razon_social: string;
+  /** Ej. "ACTIVO", "BAJA DE OFICIO" */
+  estado: string;
+  /** Ej. "HABIDO", "NO HABIDO" */
+  condicion: string;
+  direccion: string;
+  departamento: string;
+  provincia: string;
+  distrito: string;
+}
+
+/** Consultas a RENIEC y SUNAT a través de la PIDE (Plataforma de Interoperabilidad del Estado). */
+export interface PideServicePort {
+  consultarDni(dni: string): Promise<PersonaReniec>;
+  consultarRuc(ruc: string): Promise<ContribuyenteSunat>;
 }

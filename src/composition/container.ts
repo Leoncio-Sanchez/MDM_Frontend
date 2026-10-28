@@ -1,6 +1,7 @@
 import { AuthRepositoryImpl } from '../infrastructure/repositories/AuthRepository.impl';
 import { ConsultaPublicaRepositoryImpl } from '../infrastructure/repositories/ConsultaPublicaRepository.impl';
 import { DashboardRepositoryImpl } from '../infrastructure/repositories/DashboardRepository.impl';
+import { PideRepositoryImpl } from '../infrastructure/repositories/PideRepository.impl';
 import { EstadosRepositoryImpl } from '../infrastructure/repositories/EstadosRepository.impl';
 import { ExpedientesRepositoryImpl } from '../infrastructure/repositories/ExpedientesRepository.impl';
 import { GirosRepositoryImpl } from '../infrastructure/repositories/GirosRepository.impl';
@@ -19,6 +20,7 @@ import { ZonificacionesRepositoryImpl } from '../infrastructure/repositories/Zon
 import type { AuthRepositoryPort } from '../domain/ports/AuthRepository.port';
 import type { ConsultaPublicaRepositoryPort } from '../domain/ports/ConsultaPublicaRepository.port';
 import type { DashboardRepositoryPort } from '../domain/ports/DashboardRepository.port';
+import type { PideServicePort } from '../domain/ports/ExternalServices.port';
 import type { EstadosRepositoryPort } from '../domain/ports/EstadosRepository.port';
 import type { ExpedientesRepositoryPort } from '../domain/ports/ExpedientesRepository.port';
 import type { GirosRepositoryPort } from '../domain/ports/GirosRepository.port';
@@ -38,6 +40,7 @@ export interface Container {
   auth: AuthRepositoryPort;
   consultaPublica: ConsultaPublicaRepositoryPort;
   dashboard: DashboardRepositoryPort;
+  pide: PideServicePort;
   estados: EstadosRepositoryPort;
   expedientes: ExpedientesRepositoryPort;
   giros: GirosRepositoryPort;
@@ -58,6 +61,7 @@ export const container: Container = {
   auth: new AuthRepositoryImpl(),
   consultaPublica: new ConsultaPublicaRepositoryImpl(),
   dashboard: new DashboardRepositoryImpl(),
+  pide: new PideRepositoryImpl(),
   estados: new EstadosRepositoryImpl(),
   expedientes: new ExpedientesRepositoryImpl(),
   giros: new GirosRepositoryImpl(),

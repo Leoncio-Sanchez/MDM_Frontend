@@ -9,6 +9,7 @@ import {
 } from '../../application/composables/usePersonas';
 import { useTiposDocumentoIdentidadList } from '../../application/composables/useTiposDocumentoIdentidad';
 import { useFormDraft } from '../../application/composables/useFormDraft';
+import { useConsultarDni, useConsultarRuc } from '../../application/composables/usePide';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import { useToast, useDialog, extractErrorMessage, extractFieldErrors } from '../../infrastructure/store/useNotificationStore';
@@ -143,6 +144,86 @@ const longitudEsperada = (tipoId: string | number) => {
 };
 
 const fieldError = (campo: string) => fieldErrors.value[campo];
+
+// ── Autocompletar con RENIEC (DNI) y SUNAT (RUC) ─────────────────────
+const consultarDni = useConsultarDni();
+const consultarRuc = useConsultarRuc();
+const consultandoFila = ref<number | null>(null);
+
+type CamposAutocompletables = Partial<
+  Pick<typeof form.value, 'nombres' | 'apellido_paterno' | 'apellido_materno' | 'direccion' | 'departamento' | 'provincia' | 'distrito'>
+>;
+
+/** Solo DNI y RUC se pueden consultar */
+const servicioConsulta = (doc: DocumentoForm): 'RENIEC' | 'SUNAT' | null => {
+  const codigo = tiposDocumentoById.value.get(Number(doc.tipo_documento_identidad_id))?.codigo;
+  if (codigo === CODIGO_DNI) return 'RENIEC';
+  if (codigo === CODIGO_RUC) return 'SUNAT';
+  return null;
+};
+
+const puedeConsultar = (doc: DocumentoForm) => {
+  const numero = doc.numero_documento.trim();
+  return servicioConsulta(doc) !== null && /^\d+$/.test(numero) && numero.length === longitudEsperada(doc.tipo_documento_identidad_id);
+};
+
+/** Si el usuario ya escribió algo distinto, pregunta antes de reemplazarlo */
+const confirmarReemplazo = async (nuevos: CamposAutocompletables) => {
+  const actuales = form.value as Record<string, unknown>;
+  const distintos = Object.entries(nuevos).filter(([campo, valor]) => {
+    const actual = String(actuales[campo] ?? '').trim();
+    return valor && actual && actual.toUpperCase() !== valor.toUpperCase();
+  });
+  if (!distintos.length) return true;
+  return dialog.confirm({
+    title: 'Reemplazar datos',
+    text: 'Los datos encontrados son distintos a los que ya escribió. ¿Desea reemplazarlos?',
+    confirmText: 'Sí, reemplazar',
+  });
+};
+
+/** Copia al formulario solo los campos que llegaron con valor */
+const aplicar = (nuevos: CamposAutocompletables) => {
+  for (const [campo, valor] of Object.entries(nuevos) as [keyof CamposAutocompletables, string | undefined][]) {
+    if (valor) form.value[campo] = valor;
+  }
+};
+
+const consultarDocumento = async (index: number) => {
+  const doc = form.value.documentos[index];
+  const servicio = servicioConsulta(doc);
+  if (!servicio || !puedeConsultar(doc)) return;
+
+  consultandoFila.value = index;
+  try {
+    if (servicio === 'RENIEC') {
+      const p = await consultarDni.mutateAsync(doc.numero_documento.trim());
+      const nuevos: CamposAutocompletables = {
+        nombres: p.nombres, apellido_paterno: p.apellido_paterno, apellido_materno: p.apellido_materno,
+        direccion: p.direccion, departamento: p.departamento, provincia: p.provincia, distrito: p.distrito,
+      };
+      if (!(await confirmarReemplazo(nuevos))) return;
+      aplicar(nuevos);
+      toast.success(`Datos cargados: ${[p.nombres, p.apellido_paterno].filter(Boolean).join(' ')}`, 'RENIEC');
+      return;
+    }
+
+    const c = await consultarRuc.mutateAsync(doc.numero_documento.trim());
+    const ubicacion = { direccion: c.direccion, departamento: c.departamento, provincia: c.provincia, distrito: c.distrito };
+    // Persona natural con RUC: el nombre lo da RENIEC; de SUNAT solo se toma la dirección
+    const nuevos: CamposAutocompletables = esJuridica.value ? { nombres: c.razon_social, ...ubicacion } : ubicacion;
+    if (!(await confirmarReemplazo(nuevos))) return;
+    aplicar(nuevos);
+    toast.success(`Datos cargados: ${c.razon_social}`, 'SUNAT');
+
+    const problemas = [c.estado && c.estado !== 'ACTIVO' && c.estado, c.condicion && c.condicion !== 'HABIDO' && c.condicion].filter(Boolean);
+    if (problemas.length) toast.warning(`El contribuyente figura en SUNAT como ${problemas.join(' / ')}.`, 'Verifique el RUC');
+  } catch (err) {
+    toast.error(extractErrorMessage(err, 'No se pudo completar la consulta.'), `Consulta ${servicio}`);
+  } finally {
+    consultandoFila.value = null;
+  }
+};
 
 const resetErrors = () => {
   formError.value = null;
@@ -451,15 +532,33 @@ const errorInputClass = 'border-red-400 dark:border-red-700 focus:border-red-500
                 <option v-for="t in tiposDocumentoOptions" :key="t.id" :value="t.id">{{ t.nombre }}</option>
               </select>
               <div>
-                <input
-                  v-model="doc.numero_documento"
-                  type="text"
-                  inputmode="numeric"
-                  :maxlength="longitudEsperada(doc.tipo_documento_identidad_id) ?? 20"
-                  :placeholder="longitudEsperada(doc.tipo_documento_identidad_id) ? `${longitudEsperada(doc.tipo_documento_identidad_id)} dígitos` : 'Número'"
-                  :aria-label="`Número del documento ${i + 1}`"
-                  :class="[inputClass, 'font-mono', fieldError(`documentos.${i}.numero_documento`) ? errorInputClass : '']"
-                />
+                <div class="flex gap-2">
+                  <input
+                    v-model="doc.numero_documento"
+                    type="text"
+                    inputmode="numeric"
+                    :maxlength="longitudEsperada(doc.tipo_documento_identidad_id) ?? 20"
+                    :placeholder="longitudEsperada(doc.tipo_documento_identidad_id) ? `${longitudEsperada(doc.tipo_documento_identidad_id)} dígitos` : 'Número'"
+                    :aria-label="`Número del documento ${i + 1}`"
+                    :class="[inputClass, 'font-mono', fieldError(`documentos.${i}.numero_documento`) ? errorInputClass : '']"
+                    @keydown.enter.prevent="consultarDocumento(i)"
+                  />
+                  <button
+                    v-if="servicioConsulta(doc)"
+                    type="button"
+                    :disabled="!puedeConsultar(doc) || consultandoFila !== null"
+                    :title="puedeConsultar(doc) ? `Completar los datos con ${servicioConsulta(doc)}` : `Escriba los ${longitudEsperada(doc.tipo_documento_identidad_id)} dígitos para consultar`"
+                    :aria-label="`Consultar el documento ${i + 1} en ${servicioConsulta(doc)}`"
+                    class="shrink-0 inline-flex items-center gap-1.5 px-3 rounded-xl text-xs font-semibold border border-blue-200 dark:border-blue-800 text-[#0d6efd] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    @click="consultarDocumento(i)"
+                  >
+                    <span v-if="consultandoFila === i" class="w-3.5 h-3.5 border-2 border-blue-300 border-t-[#0d6efd] rounded-full animate-spin" aria-hidden="true"></span>
+                    <svg v-else class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
+                    </svg>
+                    {{ servicioConsulta(doc) }}
+                  </button>
+                </div>
                 <p v-if="fieldError(`documentos.${i}.numero_documento`)" class="text-[11px] text-red-600 dark:text-red-400 mt-1">
                   {{ fieldError(`documentos.${i}.numero_documento`) }}
                 </p>

@@ -67,6 +67,7 @@ const routes = [
       { path: 'admin/tipos-procedimiento-tupa', component: () => import('../pages/TiposProcedimientoTupaPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/unidades-organicas', component: () => import('../pages/UnidadesOrganicasPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/usuarios', component: () => import('../pages/UsuariosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
+      { path: 'admin/reportes', name: 'admin-reportes', component: () => import('../pages/ReportesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/zonificaciones', component: () => import('../pages/ZonificacionesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } }
     ]
   },

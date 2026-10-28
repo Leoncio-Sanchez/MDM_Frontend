@@ -31,3 +31,12 @@ export interface PadronLicencias {
   };
   licencias: LicenciaPadron[];
 }
+
+/** Informe formal en PDF (numerado: INFORME N° 001-2026-MDM/GDES). */
+export interface InformePdf {
+  contenido: Blob;
+  nombreArchivo: string;
+  codigo: string;
+  /** El mes ya tenía informe: se reimprime con el mismo número */
+  reimpresion: boolean;
+}

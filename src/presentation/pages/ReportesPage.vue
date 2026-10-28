@@ -11,7 +11,8 @@ import { usePadronLicencias } from '../../application/composables/useReportes';
 import { useItsePorRenovar } from '../../application/composables/useItse';
 import { useExpedientesPendientes } from '../../application/composables/useExpedientes';
 import { usePersonasList } from '../../application/composables/usePersonas';
-import { extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
+import { extractErrorMessage, useToast } from '../../infrastructure/store/useNotificationStore';
+import { container } from '../../composition/container';
 import { descargarCsv } from '../utils/csv';
 import { diasHasta, formatoFecha, hoyISO } from '../utils/fechas';
 import type { LicenciaPadron } from '../../domain/entities/Reportes.entity';
@@ -65,13 +66,41 @@ const puedeLicencias = computed(() => authStore.puede(['licencias']));
 const padron = usePadronLicencias(rango, puedeLicencias);
 const resumen = computed(() => padron.data.value?.resumen);
 
+const esMesCompleto = computed(() => {
+  const [y, m] = rango.value.desde.split('-').map(Number);
+  return rango.value.desde.endsWith('-01') && rango.value.hasta === aISO(new Date(y, m, 0));
+});
 const nombreMes = computed(() => {
   const [y, m] = rango.value.desde.split('-').map(Number);
-  const esMesCompleto = rango.value.desde.endsWith('-01') && rango.value.hasta === aISO(new Date(y, m, 0));
-  return esMesCompleto
+  return esMesCompleto.value
     ? new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric' }).format(new Date(y, m - 1, 1))
     : `${formatoFecha(rango.value.desde)} al ${formatoFecha(rango.value.hasta)}`;
 });
+
+// Informe formal numerado: solo por mes completo (el servidor lo vuelve a validar)
+const toast = useToast();
+const generandoPdf = ref(false);
+const puedeInformePdf = computed(() => esMesCompleto.value && rango.value.desde <= hoyISO());
+const descargarInformePdf = async () => {
+  generandoPdf.value = true;
+  try {
+    const informe = await container.reportes.informeLicenciasPdf(rango.value.desde, rango.value.hasta);
+    const url = URL.createObjectURL(informe.contenido);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = informe.nombreArchivo;
+    enlace.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    toast.success(
+      informe.reimpresion ? 'Este mes ya tenía informe: se reimprimió con el mismo número.' : 'Se generó el informe.',
+      `Informe N° ${informe.codigo}`,
+    );
+  } catch (err) {
+    toast.error(extractErrorMessage(err, 'No se pudo generar el informe.'), 'Informe PDF');
+  } finally {
+    generandoPdf.value = false;
+  }
+};
 
 const columnasPadron = [
   { key: 'numero_licencia', label: 'N° LICENCIA' },
@@ -208,6 +237,7 @@ watch(pestanas, (lista) => {
 const tarjeta = 'bg-white dark:bg-[#18181b] rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xs p-5';
 const botonExportar =
   'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+const botonPdf = botonExportar.replace('bg-emerald-600 hover:bg-emerald-700', 'bg-[#0B3C5D] hover:bg-[#082c45]');
 const botonFiltro = (activo: boolean) => [
   'px-3 h-8 rounded-lg text-xs font-semibold border transition-colors cursor-pointer',
   activo
@@ -263,9 +293,20 @@ const esMesAnterior = computed(() => rango.value.desde === rangoMes(-1).desde &&
           </label>
           <button type="button" :class="botonFiltro(false)" class="h-9" @click="aplicarRango">Aplicar</button>
         </div>
-        <button type="button" :class="[botonExportar, 'lg:ml-auto']" :disabled="!padron.data.value?.licencias.length" @click="exportarPadron">
-          Exportar a Excel
-        </button>
+        <div class="flex flex-wrap gap-2 lg:ml-auto">
+          <button
+            type="button"
+            :class="botonPdf"
+            :disabled="!puedeInformePdf || generandoPdf"
+            :title="puedeInformePdf ? 'Informe mensual numerado, listo para firmar' : 'Elija un mes completo que ya haya empezado'"
+            @click="descargarInformePdf"
+          >
+            {{ generandoPdf ? 'Generando…' : 'Descargar informe PDF' }}
+          </button>
+          <button type="button" :class="botonExportar" :disabled="!padron.data.value?.licencias.length" @click="exportarPadron">
+            Exportar a Excel
+          </button>
+        </div>
       </div>
       <p v-if="errorRango" role="alert" class="text-xs text-red-600 dark:text-red-400">{{ errorRango }}</p>
 

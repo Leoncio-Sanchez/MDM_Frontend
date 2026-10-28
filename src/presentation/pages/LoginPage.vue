@@ -137,6 +137,11 @@ const handleSubmit = (e: Event) => {
           </div>
         </form>
 
+        <p class="mt-6 text-center text-xs text-neutral-500">
+          ¿Es ciudadano?
+          <router-link to="/consulta" class="font-semibold text-[#0B3C5D] hover:underline">Consulte el estado de su trámite</router-link>
+        </p>
+
         <!-- Sello de Seguridad -->
         <div class="mt-8 pt-6 border-t border-neutral-100 flex items-center justify-center gap-2 text-xs text-neutral-400">
           <svg class="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

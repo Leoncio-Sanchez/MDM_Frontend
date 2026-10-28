@@ -8,7 +8,14 @@ const routes = [
     path: '/login', 
     name: 'login', 
     component: () => import('../pages/LoginPage.vue'), 
-    meta: { public: true } 
+    meta: { public: true }
+  },
+  {
+    // Consulta ciudadana: abierta con o sin sesión (no redirige al panel)
+    path: '/consulta',
+    name: 'consulta-publica',
+    component: () => import('../pages/ConsultaPublicaPage.vue'),
+    meta: { abierta: true }
   },
   {
     path: '/',
@@ -75,6 +82,8 @@ export const router = createRouter({
 let usuarioVerificado = false;
 
 router.beforeEach(async (to) => {
+  if (to.meta.abierta) return true;
+
   const authStore = useAuthStore();
   const isAuthenticated = !!authStore.token;
 

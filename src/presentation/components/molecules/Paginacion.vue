@@ -9,6 +9,8 @@ interface Props {
   desde: number;
   hasta: number;
   tamano: number;
+  /** Total antes de filtrar (solo si hay una búsqueda activa) */
+  totalSinFiltro?: number;
 }
 
 const props = defineProps<Props>();
@@ -48,7 +50,7 @@ const claseActual = 'border-[#0d6efd] bg-[#0d6efd] text-white';
     class="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 sm:px-6 py-3.5 border-t border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-400"
   >
     <div class="flex items-center gap-3">
-      <span aria-live="polite">Mostrando <strong class="text-neutral-800 dark:text-neutral-200">{{ desde }}–{{ hasta }}</strong> de <strong class="text-neutral-800 dark:text-neutral-200">{{ total }}</strong></span>
+      <span aria-live="polite">Mostrando <strong class="text-neutral-800 dark:text-neutral-200">{{ desde }}–{{ hasta }}</strong> de <strong class="text-neutral-800 dark:text-neutral-200">{{ total }}</strong><template v-if="totalSinFiltro !== undefined"> (filtrado de {{ totalSinFiltro }})</template></span>
       <label class="flex items-center gap-1.5">
         <span class="sr-only sm:not-sr-only">Por página</span>
         <select

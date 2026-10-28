@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { coincide } from '../../utils/texto';
 
 // Alto aproximado del panel (buscador + lista) para decidir si abre hacia arriba o hacia abajo
 const PANEL_MAX = 340;
@@ -72,17 +73,13 @@ const selectedOption = computed(() => {
   return props.options.find((opt) => String(opt.value) === String(props.modelValue)) || null;
 });
 
+// Sin importar tildes ni mayúsculas, y las palabras en cualquier orden y en cualquier campo
 const filteredOptions = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase();
-  if (!query) return props.options;
+  if (!searchQuery.value.trim()) return props.options;
 
-  return props.options.filter((opt) => {
-    const matchLabel = opt.label?.toLowerCase().includes(query);
-    const matchCode = opt.code?.toLowerCase().includes(query);
-    const matchBadge = opt.badge?.toLowerCase().includes(query);
-    const matchSubtitle = opt.subtitle?.toLowerCase().includes(query);
-    return matchLabel || matchCode || matchBadge || matchSubtitle;
-  });
+  return props.options.filter((opt) =>
+    coincide([opt.label, opt.code, opt.badge, opt.subtitle].filter(Boolean).join(' '), searchQuery.value),
+  );
 });
 
 const toggleOpen = () => {

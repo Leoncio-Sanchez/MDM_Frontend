@@ -32,6 +32,58 @@ export interface PadronLicencias {
   licencias: LicenciaPadron[];
 }
 
+/** Reportes de auditoría (OCI): cada tipo exige su propio acceso */
+export type TipoAuditoria = 'licencias' | 'itse';
+
+/** Licencia o certificado ITSE pasado a un estado inactivo (anulada, revocada) */
+export interface BajaRegistrada {
+  fecha_estado: string;
+  estado: string;
+  /** Resolución que sustenta la baja */
+  documento: string;
+  motivo: string;
+  /** N° de licencia o de certificado ITSE */
+  numero: number;
+  numero_expediente: number;
+  nombre_comercial: string;
+  titular: string;
+  documento_titular: string;
+  direccion: string;
+  /** Emisión de la licencia o expedición del certificado */
+  fecha_emision: string;
+  registrado_por: string;
+  /** Hora de Perú: "2026-09-15 15:30" */
+  fecha_registro: string;
+}
+
+export interface ReporteBajas {
+  desde: string;
+  hasta: string;
+  resumen: { total: number; por_estado: { estado: string; total: number }[] };
+  registros: BajaRegistrada[];
+}
+
+/** Expediente de licencia o ITSE declarado improcedente */
+export interface Improcedencia {
+  fecha_rechazo: string;
+  documento: string;
+  motivo: string;
+  numero_expediente: number;
+  procedimiento: string;
+  solicitante: string;
+  documento_solicitante: string;
+  fecha_recepcion: string;
+  registrado_por: string;
+  fecha_registro: string;
+}
+
+export interface ReporteImprocedentes {
+  desde: string;
+  hasta: string;
+  resumen: { total: number };
+  registros: Improcedencia[];
+}
+
 /** Informe formal en PDF (numerado: INFORME N° 001-2026-MDM/GDES). */
 export interface InformePdf {
   contenido: Blob;

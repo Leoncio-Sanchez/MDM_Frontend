@@ -2,55 +2,80 @@
 import { computed } from 'vue';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 import Skeleton from '../components/atoms/Skeleton.vue';
-import { useExpedientesPendientes } from '../../application/composables/useExpedientes';
-import { useItseList } from '../../application/composables/useItse';
-import { useLicenciasFuncionamientoList } from '../../application/composables/useLicenciasFuncionamiento';
+import { useResumenGeneral } from '../../application/composables/useDashboard';
+import type { Permiso } from '../../domain/entities/User.entity';
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
 
-// ── Indicadores (datos reales de la API) ────────────────────────────
-const DIAS_ALERTA_ITSE = 30;
+// ── Indicadores: cifras generales para todo el personal ─────────────
+// Los totales no revelan datos de nadie, así que se muestran a todos; el enlace
+// al listado (detalle fila por fila) solo aparece si el perfil tiene ese acceso.
+const { data: resumen, isLoading: cargando, isError: error } = useResumenGeneral();
 
-// Cada tarjeta (y su consulta) solo aparece si el perfil tiene ese acceso
-const verTramites = computed(() => authStore.puede(['expedientes']));
-const verItse = computed(() => authStore.puede(['itse']));
-const verLicencias = computed(() => authStore.puede(['licencias']));
-const sinIndicadores = computed(() => !verTramites.value && !verItse.value && !verLicencias.value);
+interface Tarjeta {
+  titulo: string;
+  ruta: string;
+  permiso: Permiso;
+  valor: number | undefined;
+  descripcion: string;
+  alerta?: string;
+  color: 'blue' | 'emerald' | 'amber';
+  icono: string;
+}
 
-const { data: pendientesData, isLoading: cargandoPendientes, isError: errorPendientes } = useExpedientesPendientes(verTramites);
-const { data: itseData, isLoading: cargandoItse, isError: errorItse } = useItseList(verItse);
-const { data: licenciasData, isLoading: cargandoLicencias, isError: errorLicencias } = useLicenciasFuncionamientoList(verLicencias);
+const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
-const listOf = <T,>(value: unknown): T[] => (Array.isArray(value) ? value : (value as any)?.results ?? []);
+const tarjetas = computed<Tarjeta[]>(() => {
+  const r = resumen.value;
+  const avisos = (partes: (string | false)[]) => partes.filter(Boolean).join(' · ') || undefined;
 
-const hoyISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const tramites = computed(() => {
-  const pendientes = listOf<{ mostrar_alerta: boolean }>(pendientesData.value);
-  return { total: pendientes.length, porVencer: pendientes.filter((p) => p.mostrar_alerta).length };
+  return [
+    {
+      titulo: 'Trámites TUPA',
+      ruta: '/admin/expedientes',
+      permiso: 'expedientes',
+      valor: r?.expedientes.en_tramite,
+      descripcion: 'Expedientes en trámite',
+      alerta: r && avisos([
+        r.expedientes.por_vencer > 0 && `${r.expedientes.por_vencer} por vencer`,
+        r.expedientes.vencidos > 0 && plural(r.expedientes.vencidos, 'vencido', 'vencidos'),
+      ]),
+      color: 'blue',
+      icono: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
+    },
+    {
+      titulo: 'Certificados ITSE',
+      ruta: '/admin/itse',
+      permiso: 'itse',
+      valor: r?.itse.vigentes,
+      descripcion: r ? `Vigentes · ${plural(r.itse.emitidos_mes, 'emitido', 'emitidos')} este mes` : 'Vigentes',
+      alerta: r && r.itse.por_vencer > 0 ? `${r.itse.por_vencer} vencen en ${r.itse.dias_alerta} días` : undefined,
+      color: 'emerald',
+      icono: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+    },
+    {
+      titulo: 'Licencias de Funcionamiento',
+      ruta: '/admin/licencias-funcionamiento',
+      permiso: 'licencias',
+      valor: r?.licencias.vigentes,
+      descripcion: r
+        ? `Vigentes de ${r.licencias.total} · ${plural(r.licencias.emitidas_mes, 'emitida', 'emitidas')} este mes`
+        : 'Vigentes',
+      color: 'amber',
+      icono: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
+    },
+  ];
 });
 
-const itse = computed(() => {
-  const hoy = hoyISO();
-  const limite = new Date();
-  limite.setDate(limite.getDate() + DIAS_ALERTA_ITSE);
-  const vigentes = listOf<{ fecha_caducidad: string; historial_estados?: unknown[] }>(itseData.value).filter(
-    (i) => !i.historial_estados?.length && i.fecha_caducidad >= hoy,
-  );
-  return { vigentes: vigentes.length, porVencer: vigentes.filter((i) => new Date(i.fecha_caducidad) <= limite).length };
-});
-
-const licencias = computed(() => {
-  const todas = listOf<{ historial_estados?: unknown[] }>(licenciasData.value);
-  return { emitidas: todas.length, vigentes: todas.filter((l) => !l.historial_estados?.length).length };
-});
+const estilos = {
+  blue: { icono: 'bg-blue-50 text-[#0d6efd] border-blue-100 dark:text-blue-400', enlace: 'text-[#0d6efd] bg-blue-50 border-blue-100 dark:text-blue-400' },
+  emerald: { icono: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:text-emerald-400', enlace: 'text-emerald-700 bg-emerald-50 border-emerald-100 dark:text-emerald-400' },
+  amber: { icono: 'bg-amber-50 text-amber-600 border-amber-100 dark:text-amber-400', enlace: 'text-amber-700 bg-amber-50 border-amber-100 dark:text-amber-400' },
+} as const;
 
 /** Valor de la tarjeta; "—" si falló la consulta (mientras carga se muestra un skeleton) */
-const valor = (error: boolean, n: number) => (error ? '—' : String(n));
+const valor = (n: number | undefined) => (error.value || n === undefined ? '—' : String(n));
 
 const todayFormatted = computed(() => {
   return new Intl.DateTimeFormat('es-PE', {
@@ -127,88 +152,40 @@ const roleLabel = computed(() => {
       </div>
     </div>
 
-    <!-- Tarjetas de Métricas: Cards con Iconos y Estados -->
-    <p
-      v-if="sinIndicadores"
-      class="rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 p-6 text-sm text-neutral-500 dark:text-neutral-400"
-    >
-      Su perfil no incluye Expedientes, Licencias ni ITSE. Use el menú lateral para acceder a sus opciones.
-    </p>
-    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-5" :aria-busy="cargandoPendientes || cargandoItse || cargandoLicencias">
-      <!-- Trámites TUPA -->
-      <router-link 
-        v-if="verTramites"
-        to="/admin/expedientes" 
-        class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
+    <!-- Tarjetas: cifras para todo el personal; enlace al listado solo con el acceso del módulo -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5" :aria-busy="cargando">
+      <component
+        :is="authStore.puede([t.permiso]) ? 'router-link' : 'div'"
+        v-for="t in tarjetas"
+        :key="t.titulo"
+        :to="authStore.puede([t.permiso]) ? t.ruta : undefined"
+        :class="[
+          'bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 transition-all group block',
+          authStore.puede([t.permiso]) ? 'hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm' : '',
+        ]"
       >
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Trámites TUPA</span>
-          <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-neutral-800 text-[#0d6efd] dark:text-blue-400 shadow-2xs border border-blue-100 dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{{ t.titulo }}</span>
+          <div :class="['w-9 h-9 rounded-xl dark:bg-neutral-800 shadow-2xs border dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform', estilos[t.color].icono]">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" :d="t.icono" />
             </svg>
           </div>
         </div>
-        <Skeleton v-if="cargandoPendientes" class="h-9 w-16 mt-4" rounded="lg" />
-        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(errorPendientes, tramites.total) }}</p>
-        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-          <Skeleton v-if="cargandoPendientes" class="h-3 w-32" />
+        <Skeleton v-if="cargando" class="h-9 w-16 mt-4" rounded="lg" />
+        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(t.valor) }}</p>
+        <div class="flex items-end justify-between gap-2 mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
+          <Skeleton v-if="cargando" class="h-3 w-32" />
           <span v-else class="text-neutral-500 dark:text-neutral-400">
-            Expedientes en trámite
-            <span v-if="tramites.porVencer" class="text-amber-600 dark:text-amber-400 font-semibold">· {{ tramites.porVencer }} por vencer</span>
+            {{ t.descripcion }}
+            <span v-if="t.alerta" class="block text-amber-600 dark:text-amber-400 font-semibold mt-0.5">{{ t.alerta }}</span>
           </span>
-          <span class="font-medium text-[#0d6efd] dark:text-blue-400 bg-blue-50 dark:bg-neutral-800 border border-blue-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver listado →</span>
+          <span
+            v-if="authStore.puede([t.permiso])"
+            :class="['shrink-0 font-medium dark:bg-neutral-800 border dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs', estilos[t.color].enlace]"
+          >Ver listado →</span>
         </div>
-      </router-link>
-
-      <!-- Inspecciones ITSE -->
-      <router-link 
-        v-if="verItse"
-        to="/admin/itse" 
-        class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
-      >
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Inspecciones ITSE</span>
-          <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-neutral-800 text-emerald-600 dark:text-emerald-400 shadow-2xs border border-emerald-100 dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-          </div>
-        </div>
-        <Skeleton v-if="cargandoItse" class="h-9 w-16 mt-4" rounded="lg" />
-        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(errorItse, itse.vigentes) }}</p>
-        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-          <Skeleton v-if="cargandoItse" class="h-3 w-32" />
-          <span v-else class="text-neutral-500 dark:text-neutral-400">
-            Certificados vigentes
-            <span v-if="itse.porVencer" class="text-amber-600 dark:text-amber-400 font-semibold">· {{ itse.porVencer }} por vencer</span>
-          </span>
-          <span class="font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-neutral-800 border border-emerald-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver listado →</span>
-        </div>
-      </router-link>
-
-      <!-- Licencias Vigentes -->
-      <router-link 
-        v-if="verLicencias"
-        to="/admin/licencias-funcionamiento" 
-        class="bg-white dark:bg-[#18181b] p-6 rounded-2xl shadow-xs border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all group block"
-      >
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Licencias Vigentes</span>
-          <div class="w-9 h-9 rounded-xl bg-amber-50 dark:bg-neutral-800 text-amber-600 dark:text-amber-400 shadow-2xs border border-amber-100 dark:border-neutral-700 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-          </div>
-        </div>
-        <Skeleton v-if="cargandoLicencias" class="h-9 w-16 mt-4" rounded="lg" />
-        <p v-else class="text-3xl font-extrabold text-neutral-900 dark:text-white mt-4 tracking-tight">{{ valor(errorLicencias, licencias.vigentes) }}</p>
-        <div class="flex items-center justify-between mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800 text-xs">
-          <Skeleton v-if="cargandoLicencias" class="h-3 w-32" />
-          <span v-else class="text-neutral-500 dark:text-neutral-400">De {{ licencias.emitidas }} emitidas en total</span>
-          <span class="font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-neutral-800 border border-amber-100 dark:border-neutral-700 px-2 py-0.5 rounded-md shadow-2xs">Ver catálogo →</span>
-        </div>
-      </router-link>
+      </component>
     </div>
   </div>
 </template>

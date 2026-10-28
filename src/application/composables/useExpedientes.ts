@@ -1,5 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
-import type { MaybeRefOrGetter } from 'vue';
 import { container } from '../../composition/container';
 import type { Expedientes } from '../../domain/entities/Expedientes.entity';
 
@@ -52,10 +51,9 @@ export function useEliminarExpedientes() {
 }
 
 /** Expedientes en trámite: con licencia y/o ITSE aún no emitidos */
-export function useExpedientesPendientes(enabled: MaybeRefOrGetter<boolean> = true) {
+export function useExpedientesPendientes() {
   return useQuery({
     queryKey: [...KEY, 'pendientes'],
-    enabled,
     queryFn: () => container.expedientes.getPendientes(),
     // Sin caché: cambia al emitir licencias o ITSE desde otras pantallas
     staleTime: 0,

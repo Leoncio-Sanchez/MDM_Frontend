@@ -1,8 +1,7 @@
-import type { PaginatedResponse } from '../types/PaginatedResponse';
 import type { Estados } from '../entities/Estados.entity';
 
 export interface EstadosRepositoryPort {
-  getAll(params?: { page?: number }): Promise<PaginatedResponse<Estados>>;
+  getAll(): Promise<Estados[]>;
   getById(id: number): Promise<Estados>;
   create(payload: Omit<Estados, 'id'>): Promise<Estados>;
   update(id: number, payload: Partial<Estados>): Promise<Estados>;

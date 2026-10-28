@@ -58,6 +58,7 @@ const routes = [
       { path: 'admin/giros', component: () => import('../pages/GirosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/inspectores', component: () => import('../pages/InspectoresPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
       { path: 'admin/itse', component: () => import('../pages/ItsePage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
+      { path: 'admin/itse/por-renovar', component: () => import('../pages/ItsePorRenovarPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
       { path: 'admin/licencias-funcionamiento', component: () => import('../pages/LicenciasFuncionamientoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['licencias'] } },
       { path: 'admin/niveles-riesgo', component: () => import('../pages/NivelesRiesgoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/personas', component: () => import('../pages/PersonasPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['expedientes', 'licencias', 'itse', 'admin'] } },

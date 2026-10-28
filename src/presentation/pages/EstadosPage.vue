@@ -11,9 +11,7 @@ import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import { useToast, useDialog } from '../../infrastructure/store/useNotificationStore';
 
-const page = ref(1);
-
-const { data, isLoading, error } = useEstadosList(page);
+const { data, isLoading, error } = useEstadosList();
 const crearEstado = useCrearEstado();
 const actualizarEstado = useActualizarEstado();
 const eliminar = useEliminarEstado();
@@ -37,13 +35,7 @@ const { form, hasDraft, clearDraft, setFormData, loadDraft } = useFormDraft({
 
 const isSubmitting = computed(() => crearEstado.isPending.value || actualizarEstado.isPending.value);
 
-const items = computed(() => data.value?.results ?? []);
-const total = computed(() => data.value?.count ?? 0);
-const hasNext = computed(() => data.value?.next !== null);
-const hasPrev = computed(() => data.value?.previous !== null);
-
-function nextPage() { if (hasNext.value) page.value++; }
-function prevPage() { if (hasPrev.value && page.value > 1) page.value--; }
+const items = computed(() => data.value ?? []);
 
 const columns = [
   { key: 'id', label: 'ID' },
@@ -146,11 +138,6 @@ const handleSubmit = () => {
       :columns="columns"
       :data="items"
       :is-loading="isLoading"
-      :total="total"
-      :has-next="hasNext"
-      :has-prev="hasPrev"
-      @next-page="nextPage"
-      @prev-page="prevPage"
       @add="handleAdd"
       @edit="handleEdit"
       @delete="handleDelete"

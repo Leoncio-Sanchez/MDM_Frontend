@@ -6,11 +6,16 @@ import type { Estados } from '../../domain/entities/Estados.entity';
 export class EstadosRepositoryImpl implements EstadosRepositoryPort {
   private readonly baseUrl = '/lf-itse/estados/';
 
-  async getAll(params?: { page?: number }): Promise<PaginatedResponse<Estados>> {
-    const { data } = await httpClient.get<PaginatedResponse<Estados>>(this.baseUrl, {
-      params: { page: params?.page ?? 1 },
-    });
-    return data;
+  /** El backend pagina este catálogo: se recorren todas las páginas para tenerlo completo. */
+  async getAll(): Promise<Estados[]> {
+    const todos: Estados[] = [];
+    for (let page = 1; ; page++) {
+      const { data } = await httpClient.get<PaginatedResponse<Estados>>(this.baseUrl, {
+        params: { page, per_page: 100 },
+      });
+      todos.push(...data.results);
+      if (!data.next || data.results.length === 0) return todos;
+    }
   }
 
   async getById(id: number): Promise<Estados> {

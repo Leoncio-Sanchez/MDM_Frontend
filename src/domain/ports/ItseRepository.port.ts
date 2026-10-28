@@ -1,4 +1,4 @@
-import type { Itse, ItsePayload, InactivarItsePayload } from '../entities/Itse.entity';
+import type { Itse, ItsePayload, InactivarItsePayload, FiltroPorRenovar } from '../entities/Itse.entity';
 
 export interface ItseRepositoryPort {
   getAll(): Promise<Itse[]>;
@@ -7,4 +7,6 @@ export interface ItseRepositoryPort {
   update(id: number, data: ItsePayload): Promise<Itse>;
   /** Los ITSE no se eliminan: se inactivan registrando un estado con su sustento. */
   inactivar(data: InactivarItsePayload): Promise<Itse>;
+  /** Vigentes que caducan en el rango y aún no se renovaron (del más próximo al más lejano). */
+  getPorRenovar(filtro: FiltroPorRenovar): Promise<Itse[]>;
 }

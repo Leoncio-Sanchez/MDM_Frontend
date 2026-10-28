@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { ItsePayload, InactivarItsePayload } from '../../domain/entities/Itse.entity';
+import type { ItsePayload, InactivarItsePayload, FiltroPorRenovar } from '../../domain/entities/Itse.entity';
+import type { Ref } from 'vue';
 
 const KEY = ['itse'] as const;
 
@@ -10,6 +11,15 @@ export function useItseList() {
     queryKey: KEY,
     queryFn: () => container.itse.getAll(),
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+/** ITSE por vencer que aún no se renovaron; se vuelve a consultar al cambiar el filtro */
+export function useItsePorRenovar(filtro: Ref<FiltroPorRenovar>) {
+  return useQuery({
+    queryKey: [...KEY, 'por-renovar', filtro],
+    queryFn: () => container.itse.getPorRenovar(filtro.value),
+    staleTime: 0,
   });
 }
 

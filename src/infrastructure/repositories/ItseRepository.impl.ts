@@ -1,5 +1,5 @@
 import type { ItseRepositoryPort } from '../../domain/ports/ItseRepository.port';
-import type { Itse, ItsePayload, InactivarItsePayload } from '../../domain/entities/Itse.entity';
+import type { Itse, ItsePayload, InactivarItsePayload, FiltroPorRenovar } from '../../domain/entities/Itse.entity';
 import { httpClient } from '../http/axios.client';
 
 export class ItseRepositoryImpl implements ItseRepositoryPort {
@@ -7,6 +7,11 @@ export class ItseRepositoryImpl implements ItseRepositoryPort {
 
   async getAll(): Promise<Itse[]> {
     const { data } = await httpClient.get(`${this.baseUrl}consulta/`);
+    return data;
+  }
+
+  async getPorRenovar(filtro: FiltroPorRenovar): Promise<Itse[]> {
+    const { data } = await httpClient.get(`${this.baseUrl}por-renovar/`, { params: filtro });
     return data;
   }
 

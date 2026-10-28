@@ -76,3 +76,10 @@ export interface InactivarItsePayload {
   documento: string;
   observaciones: string;
 }
+
+/** Filtro del listado "ITSE por renovar" (sobre la fecha de caducidad). Sin fechas: desde hoy hasta hoy + dias. */
+export interface FiltroPorRenovar {
+  dias?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+}

@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
-import { ref, type Ref, computed } from 'vue';
+import { type Ref, computed } from 'vue';
 import { container } from '../../composition/container';
 import type { Estados } from '../../domain/entities/Estados.entity';
 
 const KEY = ['estados'] as const;
 
-export function useEstadosList(page: Ref<number> = ref(1)) {
+export function useEstadosList() {
   return useQuery({
-    queryKey: [...KEY, page],
-    queryFn: () => container.estados.getAll({ page: page.value }),
+    queryKey: KEY,
+    queryFn: () => container.estados.getAll(),
     staleTime: 1000 * 60 * 5,
   });
 }

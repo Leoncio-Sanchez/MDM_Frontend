@@ -19,6 +19,7 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
 
   // Cargar borrador si existe en localStorage
   const loadDraft = (): boolean => {
+    editandoExistente = false;
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -59,6 +60,9 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
   // El reinicio del formulario no es un cambio del usuario: no debe volver a guardarse
   // como borrador (si no, el siguiente formulario se abre con esos valores viejos)
   let omitirSiguienteGuardado = false;
+  // Editando un registro que ya existe no se guarda borrador: si se cierra sin guardar,
+  // el próximo "Nuevo" se abriría con los datos de ese registro
+  let editandoExistente = false;
 
   // Descartar y limpiar borrador
   const clearDraft = () => {
@@ -69,6 +73,7 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
     hasDraft.value = false;
     lastSavedAt.value = null;
     omitirSiguienteGuardado = true;
+    editandoExistente = false;
     form.value = { ...initialData };
   };
 
@@ -82,6 +87,7 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
       hasDraft.value = false;
       lastSavedAt.value = null;
       omitirSiguienteGuardado = true;
+      editandoExistente = true;
     }
     form.value = { ...initialData, ...data };
   };
@@ -94,6 +100,7 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
         omitirSiguienteGuardado = false;
         return;
       }
+      if (editandoExistente) return;
       saveDraft();
     },
     { deep: true }

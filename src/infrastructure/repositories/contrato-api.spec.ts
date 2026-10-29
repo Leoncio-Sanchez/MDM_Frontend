@@ -3,6 +3,8 @@ import { httpClient } from '../http/axios.client';
 import { ExpedientesRepositoryImpl } from './ExpedientesRepository.impl';
 import { InspeccionesRepositoryImpl } from './InspeccionesRepository.impl';
 import { ItseRepositoryImpl } from './ItseRepository.impl';
+import { AuthRepositoryImpl } from './AuthRepository.impl';
+import { ConsultaPublicaRepositoryImpl } from './ConsultaPublicaRepository.impl';
 import type { NuevaActa } from '../../domain/entities/Inspecciones.entity';
 
 /**
@@ -26,6 +28,26 @@ describe('contrato con la API', () => {
 
     expect(httpClient.post).toHaveBeenNthCalledWith(1, '/lf-itse/expedientes/26/denegar-itse/', DENEGATORIA);
     expect(httpClient.post).toHaveBeenNthCalledWith(2, '/lf-itse/expedientes/26/denegar-licencia/', DENEGATORIA);
+  });
+
+  it('la cuenta del ciudadano usa sus endpoints públicos y deja la sesión iniciada', async () => {
+    vi.mocked(httpClient.post).mockResolvedValue({ data: { access: 'tok', refresh: 'ref' } });
+    vi.mocked(httpClient.get).mockResolvedValue({ data: { id: 9, username: 'ciu_12345678', email: '', role: 'CIUDADANO', permisos: {} } });
+    const auth = new AuthRepositoryImpl();
+    const datos = { documento: '12345678', numero_expediente: 1250, clave: 'Bodega2026', clave_confirmation: 'Bodega2026' };
+
+    const sesion = await auth.registrarCiudadano(datos);
+    await auth.restablecerClaveCiudadano(datos);
+    await auth.ingresarCiudadano('12345678', 'Bodega2026');
+
+    expect(httpClient.post).toHaveBeenNthCalledWith(1, '/publico/cuenta/registro/', datos);
+    expect(httpClient.post).toHaveBeenNthCalledWith(2, '/publico/cuenta/restablecer/', datos);
+    expect(httpClient.post).toHaveBeenNthCalledWith(3, '/publico/cuenta/ingresar/', { documento: '12345678', clave: 'Bodega2026' });
+    expect(sesion).toMatchObject({ token: 'tok', user: { role: 'CIUDADANO' } });
+    expect(localStorage.getItem('auth-refresh-token')).toBe('ref');
+
+    await new ConsultaPublicaRepositoryImpl().misTramites();
+    expect(httpClient.get).toHaveBeenLastCalledWith('/ciudadano/mis-tramites/');
   });
 
   it('el certificado ITSE consulta el acta que lo sustenta', async () => {

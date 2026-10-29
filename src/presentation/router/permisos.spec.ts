@@ -86,6 +86,14 @@ describe('rutas escritas a mano', () => {
     expect(await ir('/consulta')).toBe('/consulta');
   });
 
+  it('el ciudadano sin sesión va a su propia pantalla de ingreso', async () => {
+    expect(await ir('/ciudadano')).toBe('/ciudadano/ingresar');
+    await ir('/consulta');
+    iniciarSesion(perfil('CIUDADANO'));
+    // Con sesión, la pantalla de ingreso lo lleva directo a "Mis trámites"
+    expect(await ir('/ciudadano/ingresar')).toBe('/ciudadano');
+  });
+
   it('una pantalla ajena devuelve al dashboard', async () => {
     iniciarSesion(perfil('ADMIN_MUNICIPALIDAD', 'reportes'));
     expect(await ir('/admin/usuarios')).toBe('/admin');

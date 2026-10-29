@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import Input from '../components/atoms/Input.vue';
+import TarjetaTramite from '../components/organisms/TarjetaTramite.vue';
 import { useConsultaPublica } from '../../application/composables/useConsultaPublica';
 import { extractErrorMessage, extractFieldErrors } from '../../infrastructure/store/useNotificationStore';
 import type { TipoTramite, TramitePublico } from '../../domain/entities/ConsultaPublica.entity';
@@ -70,45 +71,6 @@ const consultar = (ev: Event) => {
   );
 };
 
-const titulo = (t: TramitePublico) => ({
-  expediente: `Expediente N.° ${t.numero}`,
-  licencia: `Licencia de Funcionamiento N.° ${t.numero}`,
-  itse: `Certificado ITSE N.° ${t.numero}`,
-})[t.tipo];
-
-/** "2026-01-15" → "15/01/2026" (sin pasar por Date para evitar el desfase de zona horaria) */
-const fecha = (valor: string | null) => (valor ? valor.split('-').reverse().join('/') : '—');
-
-const fechas = (t: TramitePublico) => {
-  if (t.tipo === 'expediente') {
-    return [
-      { etiqueta: 'Fecha de ingreso', valor: fecha(t.fecha_emision) },
-      { etiqueta: 'Fecha límite de atención', valor: fecha(t.fecha_vencimiento) },
-    ];
-  }
-  return [
-    { etiqueta: t.tipo === 'itse' ? 'Fecha de expedición' : 'Fecha de emisión', valor: fecha(t.fecha_emision) },
-    { etiqueta: 'Vence', valor: t.vigencia_indeterminada ? 'Vigencia indeterminada' : fecha(t.fecha_vencimiento) },
-  ];
-};
-
-const colorEstado: Record<TramitePublico['estado'], string> = {
-  'EN TRÁMITE': 'bg-amber-50 text-amber-800 border-amber-200',
-  ATENDIDO: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  VIGENTE: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  IMPROCEDENTE: 'bg-red-50 text-red-800 border-red-200',
-  VENCIDO: 'bg-red-50 text-red-800 border-red-200',
-  INACTIVO: 'bg-neutral-100 text-neutral-700 border-neutral-300',
-};
-
-const explicacion: Record<TramitePublico['estado'], string> = {
-  'EN TRÁMITE': 'Su trámite está siendo evaluado por la municipalidad.',
-  ATENDIDO: 'Su trámite ya fue atendido.',
-  IMPROCEDENTE: 'Su solicitud fue declarada improcedente. Acérquese a la municipalidad para más información.',
-  VIGENTE: 'El documento se encuentra vigente.',
-  VENCIDO: 'El documento venció. Debe solicitar su renovación.',
-  INACTIVO: 'El documento no se encuentra activo. Acérquese a la municipalidad para más información.',
-};
 </script>
 
 <template>
@@ -196,40 +158,24 @@ const explicacion: Record<TramitePublico['estado'], string> = {
 
       <!-- Resultados -->
       <section v-if="resultados" class="space-y-4" aria-live="polite">
-        <article
-          v-for="t in resultados"
-          :key="`${t.tipo}-${t.numero}-${t.fecha_emision}`"
-          class="bg-white rounded-2xl border border-neutral-200 shadow-xs p-5 sm:p-6"
-        >
-          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <h3 class="text-base font-bold text-neutral-900">{{ titulo(t) }}</h3>
-              <p v-if="t.nombre_comercial" class="text-sm text-neutral-600 mt-0.5">{{ t.nombre_comercial }}</p>
-              <p v-if="t.procedimiento" class="text-sm text-neutral-600 mt-0.5">{{ t.procedimiento }}</p>
-            </div>
-            <span :class="['self-start shrink-0 px-3 py-1 rounded-full border text-xs font-bold tracking-wide', colorEstado[t.estado]]">
-              {{ t.estado }}
-            </span>
-          </div>
-
-          <p class="text-sm text-neutral-600 mt-3">{{ explicacion[t.estado] }}</p>
-
-          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-neutral-100">
-            <div v-for="f in fechas(t)" :key="f.etiqueta">
-              <dt class="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">{{ f.etiqueta }}</dt>
-              <dd class="text-sm font-medium text-neutral-900">{{ f.valor }}</dd>
-            </div>
-            <div v-if="t.giros.length" class="sm:col-span-2">
-              <dt class="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">Giro comercial</dt>
-              <dd class="text-sm text-neutral-900">{{ t.giros.join(' · ') }}</dd>
-            </div>
-          </dl>
-        </article>
+        <TarjetaTramite v-for="t in resultados" :key="`${t.tipo}-${t.numero}-${t.fecha_emision}`" :tramite="t" />
       </section>
 
       <p class="text-[11px] text-neutral-500 text-center">
         Por su seguridad, solo se muestran datos del trámite: sus datos personales no se publican.
       </p>
+      <section class="bg-white rounded-2xl border border-neutral-200 p-5 text-sm text-neutral-700 flex flex-col sm:flex-row sm:items-center gap-3">
+        <p class="flex-1">
+          <span class="font-semibold text-neutral-900">¿Quiere ver todos sus trámites juntos?</span>
+          Cree su cuenta con su DNI o RUC y el número de uno de sus expedientes.
+        </p>
+        <router-link
+          to="/ciudadano/ingresar"
+          class="shrink-0 inline-flex items-center justify-center h-10 px-4 rounded-xl border border-[#0B3C5D] text-[#0B3C5D] font-semibold hover:bg-sky-50"
+        >
+          Mis trámites
+        </router-link>
+      </section>
       <p class="text-center">
         <router-link to="/login" class="text-xs font-semibold text-[#0B3C5D] hover:underline">
           Acceso para personal municipal

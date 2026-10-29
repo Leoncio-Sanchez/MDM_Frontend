@@ -11,6 +11,13 @@ const routes = [
     meta: { public: true }
   },
   {
+    // Ciudadanos: ingresar, crear su cuenta o restablecer la contraseña (con sesión, va a "Mis trámites")
+    path: '/ciudadano/ingresar',
+    name: 'ciudadano-ingresar',
+    component: () => import('../pages/CiudadanoAccesoPage.vue'),
+    meta: { public: true }
+  },
+  {
     // Consulta ciudadana: abierta con o sin sesión (no redirige al panel)
     path: '/consulta',
     name: 'consulta-publica',
@@ -100,7 +107,8 @@ router.beforeEach(async (to) => {
   const isAuthenticated = !!authStore.token;
 
   if (!to.meta.public && !isAuthenticated) {
-    return { name: 'login' };
+    // El ciudadano tiene su propia pantalla de ingreso
+    return to.path.startsWith('/ciudadano') ? { name: 'ciudadano-ingresar' } : { name: 'login' };
   }
   if (to.meta.public && isAuthenticated) {
     // Por ruta y no por nombre: la redirección de la ruta hija vacía (según el rol) solo

@@ -1,5 +1,6 @@
 import type {
   ActaInspeccion,
+  AnulacionActa,
   AsignacionInspeccion,
   DatosLocalInspeccion,
   ExpedientePorInspeccionar,
@@ -21,6 +22,7 @@ export interface InspeccionesRepositoryPort {
   reasignar(asignacionId: number, datos: Reasignacion): Promise<AsignacionInspeccion>;
   historial(expedienteId: number): Promise<AsignacionInspeccion[]>;
   actasDeExpediente(expedienteId: number): Promise<ActaInspeccion[]>;
+  anularActa(actaId: number, datos: AnulacionActa): Promise<ActaInspeccion>;
   // Inspector
   miBandeja(): Promise<AsignacionInspeccion[]>;
   registrarActa(asignacionId: number, acta: NuevaActa, onProgreso?: (porcentaje: number) => void): Promise<ActaInspeccion>;

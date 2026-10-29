@@ -126,6 +126,18 @@ const plazo = (fecha: string) => {
           <p class="whitespace-pre-line line-clamp-3">{{ i.ultima_acta_observaciones }}</p>
         </div>
 
+        <div
+          v-if="i.acta_anulada_numero"
+          role="note"
+          class="text-xs rounded-xl border border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 p-3 space-y-1"
+        >
+          <p class="font-semibold">
+            El jefe de ITSE anuló el acta N° {{ i.acta_anulada_numero }}: registre de nuevo
+            {{ esReinspeccion(i) ? 'la reinspección' : 'la visita' }}.
+          </p>
+          <p class="whitespace-pre-line break-words">Motivo: {{ i.acta_anulada_motivo }}</p>
+        </div>
+
         <p class="text-[11px] text-neutral-500 dark:text-neutral-400">
           {{ plazo(i.fecha_vencimiento) }} · Asignado por {{ i.asignado_por }}
         </p>

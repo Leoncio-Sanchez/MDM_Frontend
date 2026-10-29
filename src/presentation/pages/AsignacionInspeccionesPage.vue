@@ -62,11 +62,15 @@ const estado = (e: ExpedientePorInspeccionar) => {
     case 'OBSERVADO':
       return e.fecha_limite_subsanacion ? `Observado: reinspección (plazo ${formatoFecha(e.fecha_limite_subsanacion)})` : 'Observado: reinspección';
     default:
-      return e.asignacion_id === null ? 'Sin asignar' : 'Por visitar';
+      if (e.asignacion_id === null) return 'Sin asignar';
+      return e.acta_anulada_numero ? `Por visitar (acta N° ${e.acta_anulada_numero} anulada)` : 'Por visitar';
   }
 };
 
 const actaAbierta = ref<number | null>(null);
+// Solo la última acta vigente, y solo mientras la oficina no emita el certificado o la denegatoria
+// (esos expedientes ya no figuran en esta lista)
+const actasAnulables = computed(() => new Set(expedientes.value.map((e) => e.ultima_acta_id).filter((id) => id !== null)));
 
 const vence = (fecha: string) => {
   const d = diasHasta(fecha);
@@ -489,12 +493,19 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
               <li
                 v-for="ac in actasHistorial"
                 :key="ac.id"
-                class="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-sm"
+                :class="[
+                  'flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm',
+                  ac.anulada ? 'border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50' : 'border-neutral-200 dark:border-neutral-800',
+                ]"
               >
-                <span>
-                  <span class="font-semibold">N° {{ ac.numero_acta }}</span>
+                <span class="min-w-0">
+                  <span :class="['font-semibold', ac.anulada && 'line-through text-neutral-500 dark:text-neutral-400']">N° {{ ac.numero_acta }}</span>
                   · {{ ac.visita === 1 ? '1.ª visita' : 'Reinspección' }} · {{ RESULTADO_ACTA[ac.resultado] }}
+                  <span v-if="ac.anulada" class="ml-1 text-[11px] font-bold uppercase text-red-600 dark:text-red-400">Anulada</span>
                   <span class="block text-xs text-neutral-500 dark:text-neutral-400">{{ fechaHora(ac.fecha_visita) }} · {{ ac.inspector_nombre }}</span>
+                  <span v-if="ac.anulada" class="block text-xs text-neutral-600 dark:text-neutral-300 break-words">
+                    Anulada el {{ fechaHora(ac.fecha_anulacion) }} por {{ ac.anulado_por }}: «{{ ac.motivo_anulacion }}»
+                  </span>
                 </span>
                 <button type="button" class="text-[#0d6efd] dark:text-blue-400 font-semibold hover:underline cursor-pointer shrink-0" @click="actaAbierta = ac.id">
                   Ver
@@ -506,6 +517,11 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
       </div>
     </ModalShell>
 
-    <ActaInspeccionDetalle :acta-id="actaAbierta" vista="oficina" @close="actaAbierta = null" />
+    <ActaInspeccionDetalle
+      :acta-id="actaAbierta"
+      vista="oficina"
+      :puede-anular="actaAbierta !== null && actasAnulables.has(actaAbierta)"
+      @close="actaAbierta = null"
+    />
   </div>
 </template>

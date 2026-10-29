@@ -24,10 +24,12 @@ export function useSubirArchivo(modulo: ModuloArchivos, registroId: Ref<number |
   });
 }
 
-export function useEliminarArchivo(modulo: ModuloArchivos, registroId: Ref<number | null>) {
+/** Baja sin borrado: el archivo queda en la lista (marcado) y se puede seguir descargando */
+export function useInactivarArchivo(modulo: ModuloArchivos, registroId: Ref<number | null>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (archivoId: number) => container.archivos.eliminar(modulo, archivoId),
+    mutationFn: ({ archivoId, motivo }: { archivoId: number; motivo: string }) =>
+      container.archivos.inactivar(modulo, archivoId, motivo),
     onSuccess: () => qc.invalidateQueries({ queryKey: clave(modulo, registroId) }),
   });
 }

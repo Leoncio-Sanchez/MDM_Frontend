@@ -24,8 +24,9 @@ export class ArchivosRepositoryImpl implements ArchivosRepositoryPort {
     return data;
   }
 
-  async eliminar(modulo: ModuloArchivos, archivoId: number): Promise<void> {
-    await httpClient.delete(`/lf-itse/${modulo}/archivos/${archivoId}/`);
+  async inactivar(modulo: ModuloArchivos, archivoId: number, motivo: string): Promise<ArchivoAdjunto> {
+    const { data } = await httpClient.post<ArchivoAdjunto>(`/lf-itse/${modulo}/archivos/${archivoId}/inactivar/`, { motivo });
+    return data;
   }
 
   async descargar(modulo: ModuloArchivos, uuid: string): Promise<Blob> {

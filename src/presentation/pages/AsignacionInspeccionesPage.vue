@@ -15,6 +15,8 @@ import ModalShell from '../components/molecules/ModalShell.vue';
 import Skeleton from '../components/atoms/Skeleton.vue';
 import ActaInspeccionDetalle from '../components/organisms/ActaInspeccionDetalle.vue';
 import SelectorAcompanantes from '../components/molecules/SelectorAcompanantes.vue';
+import DenegatoriaModal from '../components/organisms/DenegatoriaModal.vue';
+import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 import { useToast, extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
 import { diasHasta, formatoFecha, hoyISO } from '../utils/fechas';
 import type { AcompananteInspeccion, ExpedientePorInspeccionar } from '../../domain/entities/Inspecciones.entity';
@@ -73,6 +75,14 @@ const actaAbierta = ref<number | null>(null);
 // Solo la última acta vigente, y solo mientras la oficina no emita el certificado o la denegatoria
 // (esos expedientes ya no figuran en esta lista)
 const actasAnulables = computed(() => new Set(expedientes.value.map((e) => e.ultima_acta_id).filter((id) => id !== null)));
+
+// Desaprobado: la denegatoria la registra quien tiene el acceso de ITSE (el servidor lo exige)
+const auth = useAuthStore();
+const puedeDenegar = computed(() => auth.puede(['itse']));
+const aDenegar = ref<ExpedientePorInspeccionar | null>(null);
+const abrirDenegatoria = (e: ExpedientePorInspeccionar) => {
+  aDenegar.value = e;
+};
 
 const vence = (fecha: string) => {
   const d = diasHasta(fecha);
@@ -356,6 +366,14 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
           >
             Ver acta
           </button>
+          <button
+            v-if="row.ultima_acta_resultado === 'DESAPROBADO' && puedeDenegar"
+            type="button"
+            class="text-red-700 dark:text-red-400 font-semibold hover:underline cursor-pointer mr-4"
+            @click="abrirDenegatoria(row)"
+          >
+            Registrar denegatoria
+          </button>
           <button type="button" class="text-neutral-600 dark:text-neutral-300 font-semibold hover:underline cursor-pointer" @click="historialDe = row">
             Historial
           </button>
@@ -372,6 +390,7 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
       :is-loading="asignar.isPending.value || actualizar.isPending.value"
       :submit-text="esReprogramacion ? 'Guardar cambios' : 'Asignar'"
       @submit="guardar"
+      :guarda-borrador="false"
     >
       <div v-if="formError" role="alert" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl">
         {{ formError }}
@@ -434,6 +453,7 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
       :is-loading="reasignar.isPending.value"
       submit-text="Reasignar"
       @submit="guardarReasignacion"
+      :guarda-borrador="false"
     >
       <div v-if="reasignarError" role="alert" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl">
         {{ reasignarError }}
@@ -559,6 +579,15 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
         </div>
       </div>
     </ModalShell>
+
+    <DenegatoriaModal
+      :expediente="aDenegar ? { id: aDenegar.expediente_id, numero: aDenegar.numero_expediente } : null"
+      :tipos="['ITSE']"
+      :observaciones-sugeridas="
+        aDenegar ? `Reinspección desaprobada según acta de inspección N° ${aDenegar.ultima_acta_numero}: no se subsanaron las observaciones.` : undefined
+      "
+      @close="aDenegar = null"
+    />
 
     <ActaInspeccionDetalle
       :acta-id="actaAbierta"

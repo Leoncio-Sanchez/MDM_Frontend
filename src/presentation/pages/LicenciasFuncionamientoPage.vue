@@ -571,6 +571,7 @@ const abrirArchivos = (row: { id: number; numero_licencia?: string | number }) =
       :is-edit-mode="true"
       submit-text="Inactivar Licencia"
       @submit="handleSubmitInactivar"
+      :guarda-borrador="false"
     >
       <div v-if="inactivarError" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl" role="alert">
         {{ inactivarError }}

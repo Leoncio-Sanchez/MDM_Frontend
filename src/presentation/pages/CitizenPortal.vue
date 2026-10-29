@@ -1,90 +1,44 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
 import { useAuthStore } from '../../infrastructure/store/useAuthStore';
-import { useToast } from '../../infrastructure/store/useNotificationStore';
-import Button from '../components/atoms/Button.vue';
-import Input from '../components/atoms/Input.vue';
 
+/**
+ * Cuentas sin acceso al sistema interno (ni personal ni inspector). Aún no hay trámites en
+ * línea para ciudadanos: falta definir con la municipalidad cómo se vincula una cuenta con su
+ * persona y cómo se crean esas cuentas. Mientras tanto se les orienta a la consulta pública,
+ * en lugar de mostrar botones que no hacen nada.
+ */
 const authStore = useAuthStore();
-const user = authStore.user;
-
-const expedientesLF = ref<any[]>([]);
-const lfData = ref({ nombreComercial: '', descripcion: '' });
-const lcData = ref({ ubicacion: '', dimensiones: '' });
-
-const loadData = async () => {
-  try {
-    const res = { data: [] };
-    expedientesLF.value = res.data;
-  } catch (e) {}
-};
-
-onMounted(() => {
-  loadData();
-});
-
-// TODO: portal ciudadano aún no conectado a la API (ver _docs/CHECKLIST_PENDIENTES.md).
-// Mientras tanto se avisa al usuario en lugar de simular que la acción se completó.
-const toast = useToast();
-const avisoPendiente = (accion: string) =>
-  toast.info(`${accion}: esta función todavía no está conectada al sistema.`, 'En construcción');
-
-const solicitarLF = async (e: Event) => {
-  e.preventDefault();
-  avisoPendiente('Solicitud de Licencia de Funcionamiento');
-};
-
-const pagarLF = async (_id: number) => {
-  avisoPendiente('Pago de expediente');
-};
-
-const solicitarLC = async (e: Event) => {
-  e.preventDefault();
-  avisoPendiente('Solicitud de Licencia de Construcción');
-};
 </script>
 
 <template>
-  <div>
-    <div class="mb-6 p-4 bg-blue-100 rounded-lg text-blue-900 shadow-sm border border-blue-200">
-      <span class="font-bold">Bienvenido, {{ user?.username }}</span> | RUC: {{ user?.ruc }}
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">1. Solicitar Licencia de Funcionamiento (LF)</h2>
-        <form @submit="solicitarLF" class="space-y-4">
-          <Input label="Nombre Comercial" v-model="lfData.nombreComercial" required />
-          <Input label="Descripción del Establecimiento" v-model="lfData.descripcion" required />
-          <Button type="submit">Presentar Expediente LF</Button>
-        </form>
-        
-        <h3 class="font-bold mt-8 mb-4 border-t pt-4">Mis Trámites LF</h3>
-        <div v-for="exp in expedientesLF" :key="exp.id" class="border p-4 mb-3 rounded bg-gray-50 flex flex-col gap-2">
-          <div class="flex justify-between items-center">
-            <span class="text-sm font-semibold">Expediente ID: {{ exp.id }}</span>
-            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-bold">{{ exp.estado }}</span>
-          </div>
-          <Button v-if="exp.estado === 'INGRESADO'" @click="pagarLF(exp.id)" class="w-full text-xs mt-2">Pagar Tasa Municipal</Button>
-          <p v-if="exp.inspeccion" class="text-sm text-gray-600 bg-yellow-50 p-2 rounded">
-            Inspección programada para: <b>{{ exp.inspeccion.fecha }}</b>
-          </p>
-        </div>
-        <p v-if="expedientesLF.length === 0" class="text-sm text-gray-500">No tienes trámites en curso.</p>
+  <div class="max-w-2xl mx-auto py-6 sm:py-10">
+    <section class="bg-white dark:bg-[#18181b] rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xs p-6 sm:p-8 space-y-5">
+      <div>
+        <h1 class="text-lg sm:text-xl font-bold text-neutral-900 dark:text-white">
+          Hola{{ authStore.user?.username ? `, ${authStore.user.username}` : '' }}
+        </h1>
+        <p class="text-sm text-neutral-600 dark:text-neutral-300 mt-2">
+          Su cuenta no tiene acceso a la gestión interna del sistema. Los trámites de licencia de funcionamiento e ITSE se
+          presentan en la mesa de partes de la municipalidad.
+        </p>
       </div>
 
-      <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 class="text-xl font-bold mb-4 text-gray-800">2. Solicitar Licencia de Construcción (LC)</h2>
-        <p class="text-sm text-gray-500 mb-4 bg-gray-50 p-3 rounded">Este trámite requiere evaluación de planos por Especialistas Externos.</p>
-        <form @submit="solicitarLC" class="space-y-4">
-          <Input label="Ubicación Geográfica" v-model="lcData.ubicacion" required />
-          <Input label="Dimensiones / Área (m2)" v-model="lcData.dimensiones" required />
-          <div class="p-4 border-2 border-dashed border-gray-300 rounded text-center text-sm text-gray-500">
-            Drag & Drop de Planos (PDF/DWG)
-          </div>
-          <Button type="submit" variant="secondary" class="w-full">Adjuntar Planos y Solicitar LC</Button>
-        </form>
+      <div class="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/70 dark:bg-blue-950/30 p-4 sm:p-5">
+        <h2 class="text-sm font-bold text-neutral-900 dark:text-white">¿Ya presentó su solicitud?</h2>
+        <p class="text-sm text-neutral-700 dark:text-neutral-300 mt-1">
+          Consulte en qué estado está con el número de expediente que figura en su cargo de recepción.
+        </p>
+        <router-link
+          to="/consulta"
+          class="mt-4 inline-flex items-center justify-center h-11 px-5 rounded-xl bg-[#0d6efd] hover:bg-blue-600 text-white text-sm font-semibold"
+        >
+          Consultar mi trámite
+        </router-link>
       </div>
-    </div>
+
+      <p class="text-xs text-neutral-500 dark:text-neutral-400">
+        Si usted es personal de la municipalidad y debería tener acceso, pida al administrador del sistema que habilite su cuenta.
+      </p>
+    </section>
   </div>
 </template>

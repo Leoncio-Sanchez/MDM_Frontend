@@ -10,8 +10,11 @@ import {
   useCrearExpedientes,
   useActualizarExpedientes,
   useAnularExpediente,
+  useExpedientesPendientes,
 } from '../../application/composables/useExpedientes';
-import type { Expedientes } from '../../domain/entities/Expedientes.entity';
+import type { Expedientes, TipoDenegatoria } from '../../domain/entities/Expedientes.entity';
+import DenegatoriaModal from '../components/organisms/DenegatoriaModal.vue';
+import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 import { useTiposProcedimientoTupaList } from '../../application/composables/useTiposProcedimientoTupa';
 import { usePersonasList } from '../../application/composables/usePersonas';
 import { useFormDraft } from '../../application/composables/useFormDraft';
@@ -268,6 +271,26 @@ const handleSubmit = () => {
   }
 };
 
+// ── Denegatoria (respuesta final desfavorable de la ITSE o de la licencia) ──
+// Solo lo que sigue pendiente y lo que la oficina del usuario evalúa
+const auth = useAuthStore();
+/** Registrar, editar y anular expedientes es de mesa de partes; ITSE y Licencias solo consultan */
+const esMesaDePartes = computed(() => auth.puede(['expedientes']));
+const { data: pendientesData } = useExpedientesPendientes();
+const pendientesPorId = computed(() => new Map((pendientesData.value ?? []).map((p) => [p.id, p])));
+const tiposDenegables = (row: { id: number; anulado?: boolean }): TipoDenegatoria[] => {
+  const p = pendientesPorId.value.get(row.id);
+  if (!p || row.anulado) return [];
+  const tipos: TipoDenegatoria[] = [];
+  if (p.itse_pendiente && auth.puede(['itse'])) tipos.push('ITSE');
+  if (p.licencia_pendiente && auth.puede(['licencias'])) tipos.push('LF');
+  return tipos;
+};
+const aDenegar = ref<{ id: number; numero: number | string; tipos: TipoDenegatoria[] } | null>(null);
+const abrirDenegatoria = (row: { id: number; numero_expediente?: number; anulado?: boolean }) => {
+  aDenegar.value = { id: row.id, numero: row.numero_expediente ?? row.id, tipos: tiposDenegables(row) };
+};
+
 // ── Archivos adjuntos (actas, fotos, documentos) ─────────────────────
 const archivosDe = ref<{ id: number; titulo: string } | null>(null);
 const abrirArchivos = (row: { id: number; numero_expediente?: string | number }) => {
@@ -283,7 +306,8 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
       :data="filasTabla"
       :is-loading="isLoading"
       delete-label="Anular"
-      :fila-bloqueada="(row) => !!row.anulado"
+      :sin-alta="!esMesaDePartes"
+      :fila-bloqueada="(row) => !!row.anulado || !esMesaDePartes"
       @add="handleAdd"
       @edit="handleEdit"
       @delete="handleAnular">
@@ -303,8 +327,22 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
         >
           Archivos
         </button>
+        <button
+          v-if="tiposDenegables(row).length"
+          type="button"
+          class="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 mr-4 font-semibold hover:underline cursor-pointer"
+          @click="abrirDenegatoria(row)"
+        >
+          Denegar
+        </button>
       </template>
     </CrudTable>
+
+    <DenegatoriaModal
+      :expediente="aDenegar ? { id: aDenegar.id, numero: aDenegar.numero } : null"
+      :tipos="aDenegar?.tipos ?? []"
+      @close="aDenegar = null"
+    />
 
     <!-- Anulación: el expediente no se borra, queda como constancia con motivo, fecha y usuario -->
     <LargeModal
@@ -315,6 +353,7 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
       :is-loading="anular.isPending.value"
       submit-text="Anular expediente"
       @submit="confirmarAnulacion"
+      :guarda-borrador="false"
     >
       <div v-if="erroresAnular.general" role="alert" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl">
         {{ erroresAnular.general }}
@@ -365,6 +404,7 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
       modulo="expedientes"
       :registro-id="archivosDe?.id ?? null"
       :titulo="archivosDe?.titulo ?? ''"
+      :solo-consulta="!esMesaDePartes"
       @close="archivosDe = null"
     />
 

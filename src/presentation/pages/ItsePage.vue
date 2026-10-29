@@ -14,6 +14,7 @@ import { useEstadosInactivosItse } from '../../application/composables/useEstado
 import { useFormDraft } from '../../application/composables/useFormDraft';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import ArchivosAdjuntos from '../components/organisms/ArchivosAdjuntos.vue';
+import DenegatoriaModal from '../components/organisms/DenegatoriaModal.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import SearchableSelect, { type SelectOption } from '../components/molecules/SearchableSelect.vue';
 import { useToast, extractErrorMessage, extractFieldErrors } from '../../infrastructure/store/useNotificationStore';
@@ -190,6 +191,19 @@ const expedienteAConsultar = computed(() =>
 );
 const { data: inspeccion, isFetching: consultandoInspeccion } = useInspeccionExpedienteItse(expedienteAConsultar);
 const sinActaAprobada = computed(() => (expedienteAConsultar.value !== null && inspeccion.value?.se_puede_emitir === false ? inspeccion.value.mensaje : null));
+
+// Reinspección Desaprobada: no corresponde el certificado sino la denegatoria
+const aDenegar = ref<{ id: number; numero: number; observaciones: string } | null>(null);
+const abrirDenegatoriaDesdeActa = () => {
+  const situacion = inspeccion.value;
+  if (!situacion?.acta || expedienteAConsultar.value === null) return;
+  aDenegar.value = {
+    id: expedienteAConsultar.value,
+    numero: situacion.numero_expediente,
+    observaciones: `Reinspección desaprobada según acta de inspección N° ${situacion.acta.numero_acta}: no se subsanaron las observaciones.`,
+  };
+  isModalOpen.value = false;
+};
 
 // Área y aforo comprobados en la visita: se proponen si aún no se escribieron
 watch(inspeccion, (situacion) => {
@@ -520,6 +534,14 @@ const abrirArchivos = (row: { id: number; numero_itse?: string | number }) => {
                 class="mt-2 p-2.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-[11px] font-medium text-amber-900 dark:text-amber-200"
               >
                 {{ sinActaAprobada }}
+                <button
+                  v-if="inspeccion?.acta?.resultado === 'DESAPROBADO'"
+                  type="button"
+                  class="block mt-1.5 font-semibold text-red-700 dark:text-red-300 underline cursor-pointer"
+                  @click="abrirDenegatoriaDesdeActa"
+                >
+                  Registrar denegatoria de la ITSE
+                </button>
               </p>
               <p
                 v-else-if="inspeccion?.acta?.resultado === 'APROBADO'"
@@ -624,6 +646,7 @@ const abrirArchivos = (row: { id: number; numero_itse?: string | number }) => {
       :is-edit-mode="true"
       submit-text="Inactivar ITSE"
       @submit="handleSubmitInactivar"
+      :guarda-borrador="false"
     >
       <div v-if="inactivarError" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl" role="alert">
         {{ inactivarError }}
@@ -657,5 +680,12 @@ const abrirArchivos = (row: { id: number; numero_itse?: string | number }) => {
         <textarea id="inact-obs" v-model="inactivarForm.observaciones" rows="3" maxlength="1000" placeholder="Motivo detallado de la inactivación..." :class="[inputClass, 'resize-none']"></textarea>
       </div>
     </LargeModal>
+
+    <DenegatoriaModal
+      :expediente="aDenegar ? { id: aDenegar.id, numero: aDenegar.numero } : null"
+      :tipos="['ITSE']"
+      :observaciones-sugeridas="aDenegar?.observaciones"
+      @close="aDenegar = null"
+    />
   </div>
 </template>

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { AnularExpedientePayload, Expedientes } from '../../domain/entities/Expedientes.entity';
+import type { AnularExpedientePayload, DenegatoriaPayload, Expedientes, TipoDenegatoria } from '../../domain/entities/Expedientes.entity';
 
 const KEY = ['expedientes'] as const;
 
@@ -49,6 +49,21 @@ export function useAnularExpediente() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+/** Registra la denegatoria: el expediente deja de esperar esa autorización en todas las pantallas */
+export function useDenegarAutorizacion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, tipo, datos }: { id: number; tipo: TipoDenegatoria; datos: DenegatoriaPayload }) =>
+      container.expedientes.denegar(id, tipo, datos),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+      qc.invalidateQueries({ queryKey: ['inspecciones'] });
+      qc.invalidateQueries({ queryKey: ['reportes'] });
     },
   });
 }

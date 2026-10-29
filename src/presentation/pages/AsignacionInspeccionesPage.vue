@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
+  useActasDeExpediente,
   useActualizarAsignacion,
   useAsignarInspector,
   useHistorialAsignaciones,
@@ -12,6 +13,7 @@ import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import ModalShell from '../components/molecules/ModalShell.vue';
 import Skeleton from '../components/atoms/Skeleton.vue';
+import ActaInspeccionDetalle from '../components/organisms/ActaInspeccionDetalle.vue';
 import { useToast, extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
 import { diasHasta, formatoFecha, hoyISO } from '../utils/fechas';
 import type { ExpedientePorInspeccionar } from '../../domain/entities/Inspecciones.entity';
@@ -39,11 +41,32 @@ const FILTROS: { valor: Filtro; texto: string }[] = [
   { valor: 'asignados', texto: 'Asignados' },
 ];
 
+/** Aprobado o Desaprobado: no hay más visitas, la oficina emite o deniega */
+const tieneDictamenFinal = (e: ExpedientePorInspeccionar) =>
+  e.ultima_acta_resultado === 'APROBADO' || e.ultima_acta_resultado === 'DESAPROBADO';
+
 const conteo = computed(() => ({
   total: expedientes.value.length,
   sinAsignar: expedientes.value.filter((e) => e.asignacion_id === null).length,
-  inspectorInactivo: expedientes.value.filter((e) => e.asignacion_id !== null && e.inspector_activo === false).length,
+  inspectorInactivo: expedientes.value.filter((e) => e.asignacion_id !== null && e.inspector_activo === false && !tieneDictamenFinal(e)).length,
+  aprobados: expedientes.value.filter((e) => e.ultima_acta_resultado === 'APROBADO').length,
+  desaprobados: expedientes.value.filter((e) => e.ultima_acta_resultado === 'DESAPROBADO').length,
 }));
+
+const estado = (e: ExpedientePorInspeccionar) => {
+  switch (e.ultima_acta_resultado) {
+    case 'APROBADO':
+      return 'Aprobado: emitir certificado';
+    case 'DESAPROBADO':
+      return 'Desaprobado: registrar denegatoria';
+    case 'OBSERVADO':
+      return e.fecha_limite_subsanacion ? `Observado: reinspección (plazo ${formatoFecha(e.fecha_limite_subsanacion)})` : 'Observado: reinspección';
+    default:
+      return e.asignacion_id === null ? 'Sin asignar' : 'Por visitar';
+  }
+};
+
+const actaAbierta = ref<number | null>(null);
 
 const vence = (fecha: string) => {
   const d = diasHasta(fecha);
@@ -59,6 +82,7 @@ const columns = [
   { key: 'vence', label: 'VENCE' },
   { key: 'inspector', label: 'INSPECTOR' },
   { key: 'visita', label: 'VISITA' },
+  { key: 'estado', label: 'ESTADO' },
 ];
 
 const filas = computed(() =>
@@ -76,7 +100,9 @@ const filas = computed(() =>
           : e.inspector_activo === false
             ? `${e.inspector_nombre} (desactivado)`
             : e.inspector_nombre,
-      visita: e.asignacion_id === null ? '—' : e.fecha_programada ? formatoFecha(e.fecha_programada) : 'Por coordinar',
+      visita: e.asignacion_id === null || tieneDictamenFinal(e) ? '—' : e.fecha_programada ? formatoFecha(e.fecha_programada) : 'Por coordinar',
+      estado: estado(e),
+      final: tieneDictamenFinal(e),
     })),
 );
 
@@ -195,6 +221,8 @@ const guardarReasignacion = () => {
 const historialDe = ref<ExpedientePorInspeccionar | null>(null);
 const historialId = computed(() => historialDe.value?.expediente_id ?? null);
 const { data: historialData, isLoading: cargandoHistorial } = useHistorialAsignaciones(historialId);
+const { data: actasHistorial } = useActasDeExpediente(historialId);
+const RESULTADO_ACTA = { APROBADO: 'Aprobado', OBSERVADO: 'Observado', DESAPROBADO: 'Desaprobado' } as const;
 
 const fechaHora = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' }) : '—';
@@ -244,6 +272,12 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
           <span v-if="conteo.inspectorInactivo" class="px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-semibold">
             {{ conteo.inspectorInactivo }} con inspector desactivado: reasígnelos
           </span>
+          <span v-if="conteo.aprobados" class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold">
+            {{ conteo.aprobados }} aprobados: emitir certificado
+          </span>
+          <span v-if="conteo.desaprobados" class="px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-semibold">
+            {{ conteo.desaprobados }} desaprobados: registrar denegatoria
+          </span>
         </div>
       </div>
 
@@ -278,11 +312,22 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
           </button>
         </template>
         <template v-else>
-          <button type="button" class="text-[#0d6efd] dark:text-blue-400 font-semibold hover:underline cursor-pointer mr-4" @click="abrirAsignar(row)">
-            Programar
-          </button>
-          <button type="button" class="text-amber-700 dark:text-amber-400 font-semibold hover:underline cursor-pointer mr-4" @click="abrirReasignar(row)">
-            Reasignar
+          <!-- Con dictamen final ya no hay visitas que programar ni reasignar -->
+          <template v-if="!row.final">
+            <button type="button" class="text-[#0d6efd] dark:text-blue-400 font-semibold hover:underline cursor-pointer mr-4" @click="abrirAsignar(row)">
+              Programar
+            </button>
+            <button type="button" class="text-amber-700 dark:text-amber-400 font-semibold hover:underline cursor-pointer mr-4" @click="abrirReasignar(row)">
+              Reasignar
+            </button>
+          </template>
+          <button
+            v-if="row.ultima_acta_id"
+            type="button"
+            class="text-emerald-700 dark:text-emerald-400 font-semibold hover:underline cursor-pointer mr-4"
+            @click="actaAbierta = row.ultima_acta_id"
+          >
+            Ver acta
           </button>
           <button type="button" class="text-neutral-600 dark:text-neutral-300 font-semibold hover:underline cursor-pointer" @click="historialDe = row">
             Historial
@@ -437,8 +482,30 @@ const claseEtiqueta = 'block text-xs font-bold text-neutral-700 dark:text-neutra
               </p>
             </li>
           </ol>
+
+          <div v-if="actasHistorial?.length" class="mt-5">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">Actas de inspección</h3>
+            <ul class="space-y-2">
+              <li
+                v-for="ac in actasHistorial"
+                :key="ac.id"
+                class="flex items-center justify-between gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 px-4 py-3 text-sm"
+              >
+                <span>
+                  <span class="font-semibold">N° {{ ac.numero_acta }}</span>
+                  · {{ ac.visita === 1 ? '1.ª visita' : 'Reinspección' }} · {{ RESULTADO_ACTA[ac.resultado] }}
+                  <span class="block text-xs text-neutral-500 dark:text-neutral-400">{{ fechaHora(ac.fecha_visita) }} · {{ ac.inspector_nombre }}</span>
+                </span>
+                <button type="button" class="text-[#0d6efd] dark:text-blue-400 font-semibold hover:underline cursor-pointer shrink-0" @click="actaAbierta = ac.id">
+                  Ver
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </ModalShell>
+
+    <ActaInspeccionDetalle :acta-id="actaAbierta" vista="oficina" @close="actaAbierta = null" />
   </div>
 </template>

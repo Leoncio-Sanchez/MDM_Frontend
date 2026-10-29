@@ -5,6 +5,7 @@ import {
   useCrearItse,
   useActualizarItse,
   useInactivarItse,
+  useInspeccionExpedienteItse,
 } from '../../application/composables/useItse';
 import { usePersonasList } from '../../application/composables/usePersonas';
 import { useExpedientesList } from '../../application/composables/useExpedientes';
@@ -183,6 +184,21 @@ watch(
   },
 );
 
+// El certificado se sustenta en el acta Aprobada del inspector (el servidor también lo exige)
+const expedienteAConsultar = computed(() =>
+  isModalOpen.value && !isEditMode.value && form.value.expediente_id ? Number(form.value.expediente_id) : null,
+);
+const { data: inspeccion, isFetching: consultandoInspeccion } = useInspeccionExpedienteItse(expedienteAConsultar);
+const sinActaAprobada = computed(() => (expedienteAConsultar.value !== null && inspeccion.value?.se_puede_emitir === false ? inspeccion.value.mensaje : null));
+
+// Área y aforo comprobados en la visita: se proponen si aún no se escribieron
+watch(inspeccion, (situacion) => {
+  const acta = situacion?.acta;
+  if (!acta || acta.resultado !== 'APROBADO' || isEditMode.value) return;
+  if (form.value.area === '' || form.value.area === null) form.value.area = acta.area_m2;
+  if (form.value.capacidad_aforo === '' || form.value.capacidad_aforo === null) form.value.capacidad_aforo = acta.aforo;
+});
+
 const fieldError = (campo: string) => fieldErrors.value[campo];
 
 const resetErrors = () => {
@@ -234,6 +250,7 @@ const validar = (): string | null => {
   if (!f.numero_itse || Number(f.numero_itse) <= 0) return 'Ingrese el número de ITSE.';
   if (esRenovacion.value && !isEditMode.value && !f.itse_principal_id) return 'Seleccione el ITSE que se está renovando.';
   if (!isEditMode.value && !f.expediente_id) return 'Seleccione el expediente de origen.';
+  if (sinActaAprobada.value) return sinActaAprobada.value;
   if (!f.titular_id) return 'Seleccione el titular.';
   if (!f.nivel_riesgo_id) return 'Seleccione el nivel de riesgo.';
   if (!f.nombre_comercial.trim()) return 'Ingrese el nombre comercial del establecimiento.';
@@ -495,6 +512,23 @@ const abrirArchivos = (row: { id: number; numero_itse?: string | number }) => {
             />
             <p v-if="isEditMode" :class="hintClass">El expediente de origen no se puede cambiar después del registro.</p>
             <p v-else-if="!expedientesSelectOptions.length" class="text-[11px] text-amber-700 dark:text-amber-400 mt-1">No hay expedientes registrados. Créelos en Operaciones → Expedientes TUPA.</p>
+            <template v-else-if="expedienteAConsultar !== null">
+              <p v-if="consultandoInspeccion && !inspeccion" :class="hintClass">Consultando el acta de inspección…</p>
+              <p
+                v-else-if="sinActaAprobada"
+                role="alert"
+                class="mt-2 p-2.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-[11px] font-medium text-amber-900 dark:text-amber-200"
+              >
+                {{ sinActaAprobada }}
+              </p>
+              <p
+                v-else-if="inspeccion?.acta?.resultado === 'APROBADO'"
+                class="mt-2 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-[11px] font-medium text-emerald-800 dark:text-emerald-200"
+              >
+                Sustento: acta de inspección N° {{ inspeccion.acta.numero_acta }} Aprobada (visita del {{ new Date(inspeccion.acta.fecha_visita).toLocaleDateString('es-PE') }}):
+                {{ inspeccion.acta.area_m2.toLocaleString('es-PE') }} m² y aforo de {{ inspeccion.acta.aforo }} personas.
+              </p>
+            </template>
           </div>
           <div>
             <span :class="labelClass">Titular <span class="text-red-500">*</span></span>

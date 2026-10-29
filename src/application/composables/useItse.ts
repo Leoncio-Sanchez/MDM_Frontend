@@ -24,6 +24,16 @@ export function useItsePorRenovar(filtro: Ref<FiltroPorRenovar>, habilitado: Ref
   });
 }
 
+/** Acta de inspección que sustenta el certificado del expediente elegido */
+export function useInspeccionExpedienteItse(expedienteId: Ref<number | null>) {
+  return useQuery({
+    queryKey: computed(() => [...KEY, 'inspeccion', expedienteId.value]),
+    queryFn: () => container.itse.getInspeccionDeExpediente(expedienteId.value!),
+    enabled: computed(() => expedienteId.value !== null),
+    staleTime: 0,
+  });
+}
+
 /** Obtiene un ITSE por ID */
 export function useItse(id: number | null) {
   return useQuery({
@@ -42,6 +52,8 @@ export function useCrearItse() {
       qc.invalidateQueries({ queryKey: KEY });
       // Emitir el ITSE saca al expediente de la lista de pendientes
       qc.invalidateQueries({ queryKey: ['expedientes', 'pendientes'] });
+      // ... y de la pantalla de asignación de inspecciones
+      qc.invalidateQueries({ queryKey: ['inspecciones'] });
     },
   });
 }

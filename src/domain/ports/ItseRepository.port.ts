@@ -1,4 +1,4 @@
-import type { Itse, ItsePayload, InactivarItsePayload, FiltroPorRenovar } from '../entities/Itse.entity';
+import type { Itse, ItsePayload, InactivarItsePayload, FiltroPorRenovar, InspeccionExpedienteItse } from '../entities/Itse.entity';
 
 export interface ItseRepositoryPort {
   getAll(): Promise<Itse[]>;
@@ -9,4 +9,6 @@ export interface ItseRepositoryPort {
   inactivar(data: InactivarItsePayload): Promise<Itse>;
   /** Vigentes que caducan en el rango y aún no se renovaron (del más próximo al más lejano). */
   getPorRenovar(filtro: FiltroPorRenovar): Promise<Itse[]>;
+  /** El certificado solo se emite con el acta de inspección Aprobada del expediente. */
+  getInspeccionDeExpediente(expedienteId: number): Promise<InspeccionExpedienteItse>;
 }

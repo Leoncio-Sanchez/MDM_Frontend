@@ -95,7 +95,7 @@ const confirmLogout = () => {
         <div class="text-right hidden sm:block">
           <p class="text-xs font-bold text-white leading-tight">{{ user?.username }}</p>
           <span class="inline-block text-[10px] font-semibold text-blue-300 bg-blue-900/60 border border-blue-700/60 px-1.5 py-0.2 rounded mt-0.5">
-            {{ user?.role === 'ADMIN_MUNICIPALIDAD' ? 'Administrador' : user?.role }}
+            {{ user?.role === 'ADMIN_MUNICIPALIDAD' ? 'Administrador' : user?.role === 'INSPECTOR' ? 'Inspector' : user?.role }}
           </span>
         </div>
         

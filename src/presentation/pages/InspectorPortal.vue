@@ -1,55 +1,119 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import Button from '../components/atoms/Button.vue';
-import { useToast } from '../../infrastructure/store/useNotificationStore';
+import { computed } from 'vue';
+import { useMiBandeja } from '../../application/composables/useInspecciones';
+import Skeleton from '../components/atoms/Skeleton.vue';
+import { extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
+import { diasHasta, formatoFecha } from '../utils/fechas';
+import type { AsignacionInspeccion } from '../../domain/entities/Inspecciones.entity';
 
-const expedientes = ref<any[]>([]);
+/**
+ * Bandeja del inspector de campo: solo las inspecciones que el jefe de ITSE le asignó
+ * y que aún no se resuelven. Ordenadas por fecha de visita y luego por vencimiento.
+ */
+const { data, isLoading, isError, error } = useMiBandeja();
+const inspecciones = computed<AsignacionInspeccion[]>(() => data.value ?? []);
 
-const loadData = async () => {
-  try {
-    const res = { data: [] };
-    expedientes.value = res.data;
-  } catch (e) {}
+const conteo = computed(() => ({
+  total: inspecciones.value.length,
+  hoy: inspecciones.value.filter((i) => i.fecha_programada && diasHasta(i.fecha_programada) === 0).length,
+  porCoordinar: inspecciones.value.filter((i) => !i.fecha_programada).length,
+}));
+
+const visita = (i: AsignacionInspeccion) => {
+  if (!i.fecha_programada) return { texto: 'Por coordinar con el solicitante', clase: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200' };
+  const d = diasHasta(i.fecha_programada);
+  if (d < 0) return { texto: `Visita atrasada (${formatoFecha(i.fecha_programada)})`, clase: 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300' };
+  if (d === 0) return { texto: 'Visita hoy', clase: 'bg-[#0d6efd] text-white' };
+  return { texto: `Visita el ${formatoFecha(i.fecha_programada)}`, clase: 'bg-blue-50 dark:bg-blue-950/40 text-[#0d6efd] dark:text-blue-300' };
 };
 
-onMounted(() => {
-  loadData();
-});
-
-// TODO: portal inspector aún no conectado a la API (ver _docs/CHECKLIST_PENDIENTES.md).
-const toast = useToast();
-
-const inspeccionar = async (_id: number, _resultado: string) => {
-  toast.info('Registrar el resultado de la inspección todavía no está conectado al sistema.', 'En construcción');
+const plazo = (fecha: string) => {
+  const d = diasHasta(fecha);
+  if (d < 0) return `El expediente venció el ${formatoFecha(fecha)}`;
+  if (d === 0) return 'El expediente vence hoy';
+  return `El expediente vence el ${formatoFecha(fecha)} (${d} ${d === 1 ? 'día' : 'días'})`;
 };
 </script>
 
 <template>
-  <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-    <h2 class="text-xl font-bold mb-6 text-slate-800">Mi Hoja de Ruta (Inspecciones ITSE)</h2>
-    
-    <div v-if="expedientes.length === 0" class="text-center p-8 text-slate-500">
-      No tienes inspecciones asignadas hoy.
+  <div class="space-y-4">
+    <section class="bg-white dark:bg-[#18181b] rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xs p-5 sm:p-6">
+      <h1 class="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100">Mis inspecciones ITSE</h1>
+      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Locales que el jefe de ITSE le asignó y que esperan su visita.</p>
+
+      <div v-if="!isLoading && !isError && conteo.total > 0" class="flex flex-wrap gap-2 text-xs mt-4">
+        <span class="px-2.5 py-1 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 font-semibold">
+          {{ conteo.total }} {{ conteo.total === 1 ? 'pendiente' : 'pendientes' }}
+        </span>
+        <span v-if="conteo.hoy" class="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#0d6efd] dark:text-blue-300 font-semibold">
+          {{ conteo.hoy }} para hoy
+        </span>
+        <span v-if="conteo.porCoordinar" class="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-semibold">
+          {{ conteo.porCoordinar }} por coordinar
+        </span>
+      </div>
+    </section>
+
+    <div
+      v-if="isError"
+      role="alert"
+      class="p-4 text-center text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl"
+    >
+      No se pudo cargar su bandeja: {{ extractErrorMessage(error) }}
     </div>
-    
-    <div v-else v-for="exp in expedientes" :key="exp.id" class="border p-4 mb-4 rounded-lg bg-slate-50">
-      <div class="mb-4">
-        <p class="text-xs text-slate-500 uppercase tracking-wider font-bold">EXP-{{ exp.id }} • {{ exp.estado }}</p>
-        <p class="text-lg font-bold text-slate-900 mt-1">{{ exp.nombreComercial || 'Local Comercial' }}</p>
-        <p class="text-sm text-slate-600">Fecha Asignada: {{ exp.inspeccion?.fecha }}</p>
-      </div>
-      
-      <div v-if="exp.estado === 'INSPECCION_PROGRAMADA'" class="flex flex-col sm:flex-row gap-2 mt-4">
-        <Button @click="inspeccionar(exp.id, 'VISTO_BUENO')" class="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto">
-          Visto Bueno (Cumple)
-        </Button>
-        <Button @click="inspeccionar(exp.id, 'OBSERVADO')" class="bg-red-600 hover:bg-red-700 w-full sm:w-auto">
-          Observar (Faltan requisitos)
-        </Button>
-      </div>
-      <div v-else class="mt-4 p-2 bg-slate-200 rounded text-slate-600 text-sm font-medium text-center">
-        Inspección Completada
-      </div>
+
+    <div v-else-if="isLoading" class="space-y-3" role="status" aria-label="Cargando inspecciones">
+      <Skeleton v-for="n in 3" :key="n" class="h-36 w-full rounded-2xl" />
     </div>
+
+    <div
+      v-else-if="inspecciones.length === 0"
+      class="bg-white dark:bg-[#18181b] rounded-2xl border border-neutral-200 dark:border-neutral-800 p-10 text-center text-sm text-neutral-500 dark:text-neutral-400"
+    >
+      No tiene inspecciones pendientes. Cuando el jefe de ITSE le asigne una, aparecerá aquí.
+    </div>
+
+    <ul v-else class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+      <li
+        v-for="i in inspecciones"
+        :key="i.id"
+        class="bg-white dark:bg-[#18181b] rounded-2xl border border-neutral-200 dark:border-neutral-800 shadow-xs p-5 space-y-3"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+              Expediente N° {{ i.numero_expediente }} · {{ i.procedimiento }}
+            </p>
+            <h2 class="text-base font-bold text-neutral-900 dark:text-white mt-1 break-words">{{ i.nombre_comercial }}</h2>
+            <p class="text-sm text-neutral-700 dark:text-neutral-300 break-words">{{ i.direccion }}</p>
+          </div>
+          <span :class="['shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-full', visita(i).clase]">{{ visita(i).texto }}</span>
+        </div>
+
+        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+          <div>
+            <dt class="text-neutral-500 dark:text-neutral-400">Solicitante</dt>
+            <dd class="font-semibold text-neutral-800 dark:text-neutral-100">{{ i.solicitante }}</dd>
+          </div>
+          <div>
+            <dt class="text-neutral-500 dark:text-neutral-400">Teléfono</dt>
+            <dd class="font-semibold text-neutral-800 dark:text-neutral-100">
+              <a v-if="i.solicitante_telefono" :href="`tel:${i.solicitante_telefono}`" class="text-[#0d6efd] dark:text-blue-400 hover:underline">
+                {{ i.solicitante_telefono }}
+              </a>
+              <span v-else>No registrado</span>
+            </dd>
+          </div>
+        </dl>
+
+        <p v-if="i.indicaciones" class="text-xs text-neutral-700 dark:text-neutral-300 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900 rounded-xl p-3 whitespace-pre-line">
+          <span class="font-semibold">Indicaciones:</span> {{ i.indicaciones }}
+        </p>
+
+        <p class="text-[11px] text-neutral-500 dark:text-neutral-400">
+          {{ plazo(i.fecha_vencimiento) }} · Asignado por {{ i.asignado_por }}
+        </p>
+      </li>
+    </ul>
   </div>
 </template>

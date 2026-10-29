@@ -102,7 +102,8 @@ const close = () => {
           <!-- Pie del Modal (#f4f4f4 con acciones y estado de persistencia) -->
           <div class="px-6 py-4 bg-[#f4f4f4] dark:bg-[#202024] border-t border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 transition-colors">
             <!-- Indicador de Persistencia en Vivo -->
-            <div v-if="guardaBorrador" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+            <!-- Al editar un registro existente no se guarda borrador (useFormDraft) -->
+            <div v-if="guardaBorrador && !isEditMode" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
               <span class="relative flex h-2 w-2">
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>

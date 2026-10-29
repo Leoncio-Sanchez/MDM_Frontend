@@ -1,0 +1,40 @@
+# CI del frontend — Sistema LF-ITSE: tipos, tests (Vitest) y build en cada PR a main.
+# Los E2E de Playwright (_validation/) necesitan el backend levantado y no corren aquí.
+name: CI frontend
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Tests y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Tipos y build
+        run: pnpm build
+        env:
+          VITE_API_URL: /api

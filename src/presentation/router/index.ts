@@ -103,7 +103,9 @@ router.beforeEach(async (to) => {
     return { name: 'login' };
   }
   if (to.meta.public && isAuthenticated) {
-    return { name: 'root' };
+    // Por ruta y no por nombre: la redirección de la ruta hija vacía (según el rol) solo
+    // se aplica al resolver la ruta; con { name: 'root' } quedaba una pantalla vacía
+    return '/';
   }
   if (isAuthenticated && !usuarioVerificado) {
     try {

@@ -3,14 +3,15 @@ import { ref, computed } from 'vue';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import ArchivosAdjuntos from '../components/organisms/ArchivosAdjuntos.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
-import { useToast, useDialog } from '../../infrastructure/store/useNotificationStore';
+import { useToast, useDialog, extractErrorMessage, extractFieldErrors } from '../../infrastructure/store/useNotificationStore';
 import SearchableSelect, { type SelectOption } from '../components/molecules/SearchableSelect.vue';
 import {
   useExpedientesList,
   useCrearExpedientes,
   useActualizarExpedientes,
-  useEliminarExpedientes,
+  useAnularExpediente,
 } from '../../application/composables/useExpedientes';
+import type { Expedientes } from '../../domain/entities/Expedientes.entity';
 import { useTiposProcedimientoTupaList } from '../../application/composables/useTiposProcedimientoTupa';
 import { usePersonasList } from '../../application/composables/usePersonas';
 import { useFormDraft } from '../../application/composables/useFormDraft';
@@ -21,7 +22,7 @@ const { data: personasList } = usePersonasList();
 
 const crear = useCrearExpedientes();
 const actualizar = useActualizarExpedientes();
-const eliminar = useEliminarExpedientes();
+const anular = useAnularExpediente();
 const toast = useToast();
 const dialog = useDialog();
 
@@ -54,7 +55,8 @@ const columns = [
   { key: 'fecha_recepcion_texto', label: 'FECHA RECEPCIÓN' },
   { key: 'fecha_vencimiento', label: 'FECHA VENCIMIENTO' },
   { key: 'procedimiento_texto', label: 'PROCEDIMIENTO TUPA' },
-  { key: 'solicitante_texto', label: 'SOLICITANTE' }
+  { key: 'solicitante_texto', label: 'SOLICITANTE' },
+  { key: 'estado_texto', label: 'ESTADO' },
 ];
 
 const expedientes = computed(() => {
@@ -115,6 +117,7 @@ const filasTabla = computed(() =>
       fecha_recepcion_texto: e.fecha_recepcion ? String(e.fecha_recepcion).split('T')[0] : '',
       procedimiento_texto: tupa ? `${tupa.codigo} · ${tupa.nombre}` : tupaId ? `#${tupaId}` : '',
       solicitante_texto: persona ? nombrePersona(persona) : solicitanteId ? `#${solicitanteId}` : '',
+      estado_texto: e.anulado ? 'ANULADO' : 'Activo',
     };
   }),
 );
@@ -148,13 +151,62 @@ const handleEdit = (item: any) => {
   isModalOpen.value = true;
 };
 
-const handleDelete = async (item: any) => {
-  const ok = await dialog.confirmDelete({
-    title: 'Confirmar eliminación',
-    text: `¿Está seguro de eliminar el Expediente #${item.numero_expediente || item.id}?\nEsta acción no se puede deshacer.`,
-    onConfirm: () => eliminar.mutateAsync(item.id),
-  });
-  if (ok) toast.success('El registro se eliminó correctamente.');
+// ── Anulación (LPAG, Ley 27444: los expedientes no se eliminan) ──────
+const MOTIVO_MINIMO = 10;
+const MOTIVO_MAXIMO = 500;
+const aAnular = ref<Expedientes | null>(null);
+const formAnular = ref({ motivo: '', documento: '' });
+const erroresAnular = ref<Record<string, string>>({});
+const modalAnularAbierto = computed({
+  get: () => aAnular.value !== null,
+  set: (abierto: boolean) => {
+    if (!abierto) aAnular.value = null;
+  },
+});
+const largoMotivo = computed(() => formAnular.value.motivo.trim().length);
+
+const handleAnular = (item: Expedientes) => {
+  aAnular.value = item;
+  formAnular.value = { motivo: '', documento: '' };
+  erroresAnular.value = {};
+};
+
+const confirmarAnulacion = async () => {
+  const expediente = aAnular.value;
+  if (!expediente) return;
+  erroresAnular.value = {};
+  if (largoMotivo.value < MOTIVO_MINIMO) {
+    erroresAnular.value = { motivo: `El motivo debe tener al menos ${MOTIVO_MINIMO} caracteres.` };
+    return;
+  }
+  try {
+    await anular.mutateAsync({
+      id: expediente.id,
+      datos: { motivo: formAnular.value.motivo.trim(), documento: formAnular.value.documento.trim() || null },
+    });
+    aAnular.value = null;
+    toast.success('Queda registrado con su motivo; ya no aparece entre los pendientes.', `Expediente N° ${expediente.numero_expediente} anulado`);
+  } catch (err) {
+    erroresAnular.value = extractFieldErrors(err);
+    if (!Object.keys(erroresAnular.value).length) erroresAnular.value = { general: extractErrorMessage(err, 'No se pudo anular el expediente.') };
+  }
+};
+
+const fechaHora = (iso: string) =>
+  new Intl.DateTimeFormat('es-PE', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Lima' }).format(new Date(iso));
+
+const verAnulacion = (item: Expedientes) => {
+  const a = item.anulacion;
+  if (!a) return;
+  dialog.info(
+    `Expediente N° ${item.numero_expediente} anulado`,
+    [
+      `Motivo: ${a.motivo}`,
+      a.documento ? `Documento: ${a.documento}` : null,
+      `Fecha: ${fechaHora(a.fecha)}`,
+      `Registrado por: ${a.usuario_nombre ?? `usuario #${a.usuario}`}`,
+    ].filter(Boolean).join('\n'),
+  );
 };
 
 const handleSubmit = () => {
@@ -230,10 +282,20 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
       :columns="columns"
       :data="filasTabla"
       :is-loading="isLoading"
+      delete-label="Anular"
+      :fila-bloqueada="(row) => !!row.anulado"
       @add="handleAdd"
       @edit="handleEdit"
-      @delete="handleDelete">
+      @delete="handleAnular">
       <template #acciones-fila="{ row }">
+        <button
+          v-if="row.anulado"
+          type="button"
+          class="text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 mr-4 font-semibold hover:underline cursor-pointer"
+          @click="verAnulacion(row)"
+        >
+          Ver anulación
+        </button>
         <button
           type="button"
           class="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white mr-4 font-semibold hover:underline cursor-pointer"
@@ -243,6 +305,60 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
         </button>
       </template>
     </CrudTable>
+
+    <!-- Anulación: el expediente no se borra, queda como constancia con motivo, fecha y usuario -->
+    <LargeModal
+      v-model="modalAnularAbierto"
+      :title="`Anular expediente N° ${aAnular?.numero_expediente ?? ''}`"
+      subtitle="El expediente no se borra: queda registrado como anulado, con el motivo, la fecha y quién lo anuló."
+      max-width="max-w-xl"
+      :is-loading="anular.isPending.value"
+      submit-text="Anular expediente"
+      @submit="confirmarAnulacion"
+    >
+      <div v-if="erroresAnular.general" role="alert" class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-xs font-medium rounded-xl">
+        {{ erroresAnular.general }}
+      </div>
+      <p class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
+        Un expediente anulado sale de los pendientes y ya no admite cambios, ampliaciones de plazo, denegatorias ni la emisión de licencia o ITSE. La anulación no se puede revertir.
+      </p>
+      <div>
+        <label for="motivo-anulacion" class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+          Motivo <span class="text-red-500">*</span>
+        </label>
+        <textarea
+          id="motivo-anulacion"
+          v-model="formAnular.motivo"
+          rows="4"
+          :maxlength="MOTIVO_MAXIMO"
+          placeholder="Ej. Desistimiento presentado por el solicitante mediante carta del 12/10/2026"
+          :aria-invalid="!!erroresAnular.motivo"
+          :class="[
+            'w-full px-3.5 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 resize-none',
+            erroresAnular.motivo ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-700',
+          ]"
+        ></textarea>
+        <div class="flex justify-between mt-1 text-xs">
+          <span v-if="erroresAnular.motivo" class="text-red-600 dark:text-red-400">{{ erroresAnular.motivo }}</span>
+          <span v-else class="text-neutral-500 dark:text-neutral-400">Mínimo {{ MOTIVO_MINIMO }} caracteres.</span>
+          <span class="text-neutral-400 tabular-nums">{{ largoMotivo }}/{{ MOTIVO_MAXIMO }}</span>
+        </div>
+      </div>
+      <div>
+        <label for="documento-anulacion" class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
+          Documento que la sustenta <span class="text-neutral-400 dark:text-neutral-500 font-normal">(Opcional)</span>
+        </label>
+        <input
+          id="documento-anulacion"
+          v-model="formAnular.documento"
+          type="text"
+          maxlength="100"
+          placeholder="Ej. Resolución Gerencial N° 045-2026-MDM/GDES"
+          class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200"
+        />
+        <span v-if="erroresAnular.documento" class="block mt-1 text-xs text-red-600 dark:text-red-400">{{ erroresAnular.documento }}</span>
+      </div>
+    </LargeModal>
 
     <ArchivosAdjuntos
       :open="archivosDe !== null"

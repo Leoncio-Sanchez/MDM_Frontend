@@ -11,6 +11,24 @@ export interface Expedientes {
   solicitante?: number;
   representante_id?: number | null;
   observaciones?: string | null;
+  /** Los expedientes no se eliminan (LPAG): se anulan y quedan como constancia */
+  anulado?: boolean;
+  anulacion?: AnulacionExpediente | null;
+}
+
+export interface AnulacionExpediente {
+  motivo: string;
+  /** Resolución u otro documento que la sustenta */
+  documento: string | null;
+  /** ISO con hora de Perú */
+  fecha: string;
+  usuario: number;
+  usuario_nombre: string | null;
+}
+
+export interface AnularExpedientePayload {
+  motivo: string;
+  documento?: string | null;
 }
 
 /** Expediente cuya licencia y/o ITSE aún no se emite (`/expedientes/pendientes/`). */

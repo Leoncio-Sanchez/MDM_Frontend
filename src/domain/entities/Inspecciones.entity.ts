@@ -21,6 +21,18 @@ export interface UltimaActa {
   ultima_acta_resultado: ResultadoActa | null;
   fecha_limite_subsanacion: string | null;
   ultima_acta_observaciones: string | null;
+  /** El jefe anuló el acta de la visita que sigue: hay que volver a registrarla */
+  acta_anulada_numero: string | null;
+  acta_anulada_motivo: string | null;
+  acta_anulada_fecha: string | null;
+}
+
+export const MOTIVO_ANULACION_MINIMO = 10;
+export const MOTIVO_ANULACION_MAXIMO = 500;
+
+export interface AnulacionActa {
+  motivo: string;
+  documento?: string | null;
 }
 
 export interface FotoActa {
@@ -47,6 +59,12 @@ export interface ActaInspeccion extends Record<GrupoChecklist, EstadoChecklist> 
   resultado: ResultadoActa;
   fecha_limite_subsanacion: string | null;
   fecha_registro: string;
+  /** Anulada por el jefe de ITSE: se conserva como constancia, pero ya no cuenta */
+  anulada: boolean;
+  fecha_anulacion: string | null;
+  motivo_anulacion: string | null;
+  documento_anulacion: string | null;
+  anulado_por: string | null;
   /** Solo al pedir un acta en particular */
   fotos?: FotoActa[];
 }

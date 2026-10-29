@@ -2,11 +2,18 @@
 import { computed, onBeforeUnmount, ref, toRef, watch } from 'vue';
 import ModalShell from '../molecules/ModalShell.vue';
 import Skeleton from '../atoms/Skeleton.vue';
-import { useActa } from '../../../application/composables/useInspecciones';
+import { useActa, useAnularActa } from '../../../application/composables/useInspecciones';
 import { container } from '../../../composition/container';
-import { extractErrorMessage } from '../../../infrastructure/store/useNotificationStore';
+import { extractErrorMessage, useDialog, useToast } from '../../../infrastructure/store/useNotificationStore';
 import { formatoFecha } from '../../utils/fechas';
-import { GRUPOS_CHECKLIST, type EstadoChecklist, type ResultadoActa, type TipoFotoActa } from '../../../domain/entities/Inspecciones.entity';
+import {
+  GRUPOS_CHECKLIST,
+  MOTIVO_ANULACION_MAXIMO,
+  MOTIVO_ANULACION_MINIMO,
+  type EstadoChecklist,
+  type ResultadoActa,
+  type TipoFotoActa,
+} from '../../../domain/entities/Inspecciones.entity';
 import type { VistaActa } from '../../../domain/ports/InspeccionesRepository.port';
 
 /** Acta de inspección registrada (solo lectura): datos, checklist, resultado y fotos */
@@ -14,12 +21,67 @@ interface Props {
   /** null = cerrado */
   actaId: number | null;
   vista: VistaActa;
+  /** Jefe de ITSE, sobre la última acta vigente de un expediente aún sin resolver */
+  puedeAnular?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { puedeAnular: false });
 const emit = defineEmits<{ close: [] }>();
 
 const { data: acta, isLoading, isError, error } = useActa(toRef(props, 'actaId'), props.vista);
+
+// ── Anulación ───────────────────────────────────────────────────────────────
+const anular = useAnularActa();
+const dialog = useDialog();
+const toast = useToast();
+const anulando = ref(false);
+const motivo = ref('');
+const documento = ref('');
+const errorAnulacion = ref<string | null>(null);
+
+const cerrarAnulacion = () => {
+  anulando.value = false;
+  motivo.value = '';
+  documento.value = '';
+  errorAnulacion.value = null;
+};
+watch(() => props.actaId, cerrarAnulacion);
+
+const confirmarAnulacion = async () => {
+  const a = acta.value;
+  if (!a) return;
+  const largo = motivo.value.trim().length;
+  if (largo < MOTIVO_ANULACION_MINIMO) {
+    errorAnulacion.value = `Explique el motivo (al menos ${MOTIVO_ANULACION_MINIMO} caracteres).`;
+    return;
+  }
+  errorAnulacion.value = null;
+
+  const ok = await dialog.confirm({
+    variant: 'warning',
+    title: `¿Anular el acta N° ${a.numero_acta}?`,
+    text:
+      a.visita === 1
+        ? 'Se conservará como constancia, pero dejará de contar: el inspector deberá registrar de nuevo la 1.ª visita.'
+        : 'Se conservará como constancia, pero dejará de contar: el inspector deberá registrar de nuevo la reinspección.',
+    confirmText: 'Sí, anular',
+    cancelText: 'Cancelar',
+  });
+  if (!ok) return;
+
+  anular.mutate(
+    { actaId: a.id, datos: { motivo: motivo.value.trim(), documento: documento.value.trim() || null } },
+    {
+      onSuccess: () => {
+        toast.success(`Acta N° ${a.numero_acta} anulada.`);
+        cerrarAnulacion();
+      },
+      onError: (e) => {
+        errorAnulacion.value = extractErrorMessage(e);
+      },
+    },
+  );
+};
 
 // Las fotos requieren el token: se piden como blob y se muestran con una URL local
 const urls = ref<Record<number, string>>({});
@@ -103,9 +165,24 @@ const titulo = computed(() => (acta.value ? `Acta N° ${acta.value.numero_acta}`
         <p v-else-if="isError" role="alert" class="text-sm text-red-600 dark:text-red-400">No se pudo cargar el acta: {{ extractErrorMessage(error) }}</p>
 
         <template v-else-if="acta">
+          <div
+            v-if="acta.anulada"
+            role="note"
+            class="rounded-xl border border-red-300 dark:border-red-900 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-200 p-3 text-sm space-y-1"
+          >
+            <p class="font-bold">Acta anulada: no cuenta como visita</p>
+            <p class="text-xs">
+              El {{ fechaHora(acta.fecha_anulacion!) }} por {{ acta.anulado_por }}
+              <template v-if="acta.documento_anulacion"> · {{ acta.documento_anulacion }}</template>
+            </p>
+            <p class="text-xs whitespace-pre-line break-words">«{{ acta.motivo_anulacion }}»</p>
+          </div>
+
           <div class="flex flex-wrap items-center gap-3">
-            <span :class="['px-3 py-1 rounded-full text-sm font-bold', RESULTADO[acta.resultado].clase]">{{ RESULTADO[acta.resultado].texto }}</span>
-            <span v-if="acta.fecha_limite_subsanacion" class="text-xs text-amber-800 dark:text-amber-300">
+            <span :class="['px-3 py-1 rounded-full text-sm font-bold', RESULTADO[acta.resultado].clase, acta.anulada && 'opacity-50 line-through']">
+              {{ RESULTADO[acta.resultado].texto }}
+            </span>
+            <span v-if="acta.fecha_limite_subsanacion && !acta.anulada" class="text-xs text-amber-800 dark:text-amber-300">
               Plazo para subsanar hasta el {{ formatoFecha(acta.fecha_limite_subsanacion) }}; luego corresponde la reinspección.
             </span>
           </div>
@@ -164,6 +241,65 @@ const titulo = computed(() => (acta.value ? `Acta N° ${acta.value.numero_acta}`
             </ul>
           </div>
         </template>
+      </div>
+
+      <div
+        v-if="acta && puedeAnular && !acta.anulada"
+        class="border-t border-neutral-200 dark:border-neutral-800 p-5 sm:p-6"
+      >
+        <button
+          v-if="!anulando"
+          type="button"
+          class="h-10 px-4 rounded-xl border border-red-300 dark:border-red-900 text-sm font-semibold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
+          @click="anulando = true"
+        >
+          Anular acta
+        </button>
+
+        <form v-else class="space-y-3" @submit.prevent="confirmarAnulacion">
+          <p class="text-xs text-neutral-600 dark:text-neutral-300">
+            Úselo solo si el acta se registró con un error. Queda como constancia con sus fotos y el inspector vuelve a registrar esta visita.
+          </p>
+          <div>
+            <label for="motivo-anulacion" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-200 mb-1">Motivo *</label>
+            <textarea
+              id="motivo-anulacion"
+              v-model="motivo"
+              rows="3"
+              :maxlength="MOTIVO_ANULACION_MAXIMO"
+              placeholder="Ej.: se registró un metraje equivocado"
+              class="w-full rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            />
+          </div>
+          <div>
+            <label for="documento-anulacion" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-200 mb-1">Documento de sustento (opcional)</label>
+            <input
+              id="documento-anulacion"
+              v-model="documento"
+              type="text"
+              maxlength="100"
+              placeholder="Ej.: Memorando N° 015-2026"
+              class="w-full h-10 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 text-sm text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0d6efd]"
+            />
+          </div>
+          <p v-if="errorAnulacion" role="alert" class="text-xs font-semibold text-red-600 dark:text-red-400">{{ errorAnulacion }}</p>
+          <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+            <button
+              type="button"
+              class="h-10 px-4 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+              @click="cerrarAnulacion"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              :disabled="anular.isPending.value"
+              class="h-10 px-4 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold cursor-pointer"
+            >
+              {{ anular.isPending.value ? 'Anulando…' : 'Anular acta' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </ModalShell>

@@ -2,6 +2,7 @@ import type { InspeccionesRepositoryPort, VistaActa } from '../../domain/ports/I
 import {
   GRUPOS_CHECKLIST,
   type ActaInspeccion,
+  type AnulacionActa,
   type AsignacionInspeccion,
   type DatosLocalInspeccion,
   type ExpedientePorInspeccionar,
@@ -51,6 +52,11 @@ export class InspeccionesRepositoryImpl implements InspeccionesRepositoryPort {
 
   async actasDeExpediente(expedienteId: number): Promise<ActaInspeccion[]> {
     const { data } = await httpClient.get<ActaInspeccion[]>(`${BASE}/expedientes/${expedienteId}/actas/`);
+    return data;
+  }
+
+  async anularActa(actaId: number, datos: AnulacionActa): Promise<ActaInspeccion> {
+    const { data } = await httpClient.post<ActaInspeccion>(`${BASE}/actas/${actaId}/anular/`, datos);
     return data;
   }
 

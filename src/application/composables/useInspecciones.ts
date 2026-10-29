@@ -1,7 +1,7 @@
 import { computed, type Ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { DatosLocalInspeccion, NuevaActa, NuevaAsignacion, Reasignacion } from '../../domain/entities/Inspecciones.entity';
+import type { AnulacionActa, DatosLocalInspeccion, NuevaActa, NuevaAsignacion, Reasignacion } from '../../domain/entities/Inspecciones.entity';
 import type { VistaActa } from '../../domain/ports/InspeccionesRepository.port';
 
 const KEY = ['inspecciones'] as const;
@@ -84,8 +84,17 @@ export function useActa(actaId: Ref<number | null>, vista: VistaActa) {
     queryKey: computed(() => [...KEY, 'acta', vista, actaId.value]),
     queryFn: () => container.inspecciones.acta(actaId.value!, vista),
     enabled: computed(() => actaId.value !== null),
-    // El acta no cambia una vez registrada
+    // El acta no cambia una vez registrada (al anularla se invalida)
     staleTime: Infinity,
+  });
+}
+
+/** El jefe de ITSE anula un acta registrada con un error */
+export function useAnularActa() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: ({ actaId, datos }: { actaId: number; datos: AnulacionActa }) => container.inspecciones.anularActa(actaId, datos),
+    onSuccess: invalidar,
   });
 }
 

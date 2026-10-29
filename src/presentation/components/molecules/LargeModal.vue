@@ -10,6 +10,8 @@ interface Props {
   submitText?: string;
   hasDraft?: boolean;
   isEditMode?: boolean;
+  /** false en formularios que no guardan borrador: el aviso de persistencia sería falso */
+  guardaBorrador?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -18,6 +20,7 @@ const props = withDefaults(defineProps<Props>(), {
   submitText: 'Guardar Registro',
   hasDraft: false,
   isEditMode: false,
+  guardaBorrador: true,
 });
 
 const emit = defineEmits<{
@@ -99,7 +102,7 @@ const close = () => {
           <!-- Pie del Modal (#f4f4f4 con acciones y estado de persistencia) -->
           <div class="px-6 py-4 bg-[#f4f4f4] dark:bg-[#202024] border-t border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 transition-colors">
             <!-- Indicador de Persistencia en Vivo -->
-            <div class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+            <div v-if="guardaBorrador" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
               <span class="relative flex h-2 w-2">
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
@@ -109,7 +112,7 @@ const close = () => {
             </div>
 
             <!-- Botones de Acción -->
-            <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end sm:ml-auto">
               <button 
                 type="button"
                 @click="close"

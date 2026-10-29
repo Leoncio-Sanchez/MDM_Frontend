@@ -7,7 +7,14 @@
  */
 
 import type { ExpedientesRepositoryPort } from '../../domain/ports/ExpedientesRepository.port';
-import type { AnularExpedientePayload, Expedientes, ExpedientePendiente } from '../../domain/entities/Expedientes.entity';
+import type {
+  AnularExpedientePayload,
+  Denegatoria,
+  DenegatoriaPayload,
+  Expedientes,
+  ExpedientePendiente,
+  TipoDenegatoria,
+} from '../../domain/entities/Expedientes.entity';
 import { httpClient } from '../http/axios.client';
 
 export class ExpedientesRepositoryImpl implements ExpedientesRepositoryPort {
@@ -40,6 +47,11 @@ export class ExpedientesRepositoryImpl implements ExpedientesRepositoryPort {
 
   async getPendientes(): Promise<ExpedientePendiente[]> {
     const { data } = await httpClient.get(`${this.baseUrl}pendientes/`);
+    return data;
+  }
+
+  async denegar(id: number, tipo: TipoDenegatoria, datos: DenegatoriaPayload): Promise<Denegatoria> {
+    const { data } = await httpClient.post(`${this.baseUrl}${id}/denegar-${tipo === 'ITSE' ? 'itse' : 'licencia'}/`, datos);
     return data;
   }
 }

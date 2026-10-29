@@ -61,7 +61,8 @@ const routes = [
         meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'] }
       },
       { path: 'admin/estados', component: () => import('../pages/EstadosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
-      { path: 'admin/expedientes', component: () => import('../pages/ExpedientesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['expedientes'] } },
+      // ITSE y Licencias entran en consulta: ven el expediente, sus archivos y registran su denegatoria
+      { path: 'admin/expedientes', component: () => import('../pages/ExpedientesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['expedientes', 'licencias', 'itse'] } },
       { path: 'admin/giros', component: () => import('../pages/GirosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/inspectores', component: () => import('../pages/InspectoresPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
       { path: 'admin/itse', component: () => import('../pages/ItsePage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },

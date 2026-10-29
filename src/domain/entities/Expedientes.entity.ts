@@ -31,6 +31,26 @@ export interface AnularExpedientePayload {
   documento?: string | null;
 }
 
+/** LF = licencia de funcionamiento */
+export type TipoDenegatoria = 'ITSE' | 'LF';
+
+/** Respuesta final desfavorable: no se borra ni se repite */
+export interface DenegatoriaPayload {
+  /** YYYY-MM-DD, no futura */
+  fecha_rechazo: string;
+  /** Resolución que la sustenta */
+  documento: string;
+  observaciones: string;
+}
+
+export interface Denegatoria extends DenegatoriaPayload {
+  id: number;
+  tipo_autorizacion: TipoDenegatoria;
+  fecha_digitacion: string;
+  expediente: number;
+  usuario: number;
+}
+
 /** Expediente cuya licencia y/o ITSE aún no se emite (`/expedientes/pendientes/`). */
 export interface ExpedientePendiente {
   id: number;

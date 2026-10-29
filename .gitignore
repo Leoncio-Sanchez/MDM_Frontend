@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 pnpm-workspace.yaml
 .env.local
+
+# Resultados de Playwright
+test-results
+playwright-report

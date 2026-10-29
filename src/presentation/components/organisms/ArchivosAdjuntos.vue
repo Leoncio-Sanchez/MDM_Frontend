@@ -18,6 +18,8 @@ interface Props {
   registroId: number | null;
   /** Ej. "Expediente N° 1250" */
   titulo: string;
+  /** Solo ver y descargar (quien no puede modificar el registro tampoco sube ni da de baja) */
+  soloConsulta?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -212,6 +214,7 @@ const ocupado = computed(() => subidas.value.length > 0 || inactivar.isPending.v
       <div class="p-5 sm:p-6 space-y-5 overflow-y-auto">
         <!-- Zona para soltar o elegir archivos -->
         <label
+          v-if="!soloConsulta"
           :class="[
             'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-7 text-center cursor-pointer transition-colors',
             arrastrando
@@ -291,7 +294,7 @@ const ocupado = computed(() => subidas.value.length > 0 || inactivar.isPending.v
                   {{ abriendo === a.uuid ? 'Abriendo…' : seAbreEnNavegador(a) ? 'Ver' : 'Descargar' }}
                 </button>
                 <button
-                  v-if="enBaja !== a.id"
+                  v-if="enBaja !== a.id && !soloConsulta"
                   type="button"
                   class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
                   :aria-label="`Dar de baja ${a.nombre_original}`"

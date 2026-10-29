@@ -1,5 +1,69 @@
+export type EstadoChecklist = 'CUMPLE' | 'NO_CUMPLE' | 'NO_APLICA';
+export type ResultadoActa = 'APROBADO' | 'OBSERVADO' | 'DESAPROBADO';
+export type TipoFotoActa = 'FACHADA' | 'EXTINTORES' | 'TABLEROS' | 'OTRA';
+export type GrupoChecklist = 'extintores' | 'senalizacion' | 'luces_emergencia' | 'tableros_electricos';
+
+/** Los 4 grupos que verifica el inspector (D.S. N° 002-2018-PCM) */
+export const GRUPOS_CHECKLIST: { clave: GrupoChecklist; nombre: string }[] = [
+  { clave: 'extintores', nombre: 'Extintores' },
+  { clave: 'senalizacion', nombre: 'Señalización' },
+  { clave: 'luces_emergencia', nombre: 'Luces de emergencia' },
+  { clave: 'tableros_electricos', nombre: 'Tableros eléctricos' },
+];
+
+export const PLAZOS_SUBSANACION = [2, 3] as const;
+
+/** Estado de la última acta del expediente (vacío si aún no hay visita) */
+export interface UltimaActa {
+  ultima_acta_id: number | null;
+  ultima_acta_numero: string | null;
+  ultima_acta_visita: number | null;
+  ultima_acta_resultado: ResultadoActa | null;
+  fecha_limite_subsanacion: string | null;
+  ultima_acta_observaciones: string | null;
+}
+
+export interface FotoActa {
+  id: number;
+  tipo: TipoFotoActa;
+  nombre_original: string;
+  extension: string;
+  tamanio_bytes: number;
+}
+
+export interface ActaInspeccion extends Record<GrupoChecklist, EstadoChecklist> {
+  id: number;
+  expediente_id: number;
+  numero_expediente: number;
+  asignacion_id: number;
+  inspector_id: number;
+  inspector_nombre: string;
+  numero_acta: string;
+  visita: 1 | 2;
+  fecha_visita: string;
+  area_m2: number;
+  aforo: number;
+  observaciones: string | null;
+  resultado: ResultadoActa;
+  fecha_limite_subsanacion: string | null;
+  fecha_registro: string;
+  /** Solo al pedir un acta en particular */
+  fotos?: FotoActa[];
+}
+
+export interface NuevaActa extends Record<GrupoChecklist, EstadoChecklist> {
+  numero_acta: string;
+  /** ISO con zona horaria */
+  fecha_visita: string;
+  area_m2: number;
+  aforo: number;
+  observaciones: string | null;
+  plazo_subsanacion_dias: number | null;
+  fotos: { tipo: TipoFotoActa; archivo: File }[];
+}
+
 /** Expediente que espera su inspección ITSE, con su asignación vigente si la tiene */
-export interface ExpedientePorInspeccionar {
+export interface ExpedientePorInspeccionar extends UltimaActa {
   expediente_id: number;
   numero_expediente: number;
   fecha_recepcion: string;
@@ -29,7 +93,7 @@ export interface InspectorDisponible {
   pendientes: number;
 }
 
-export interface AsignacionInspeccion {
+export interface AsignacionInspeccion extends UltimaActa {
   id: number;
   expediente_id: number;
   numero_expediente: number;

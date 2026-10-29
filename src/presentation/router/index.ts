@@ -49,6 +49,12 @@ const routes = [
         meta: { allowedRoles: ['INSPECTOR', 'ADMIN_MUNICIPALIDAD'], permisos: ['inspector'] }
       },
       {
+        path: 'inspector/acta/:asignacionId(\\d+)',
+        name: 'inspector-acta',
+        component: () => import('../pages/RegistrarActaPage.vue'),
+        meta: { allowedRoles: ['INSPECTOR', 'ADMIN_MUNICIPALIDAD'], permisos: ['inspector'] }
+      },
+      {
         path: 'admin',
         name: 'admin',
         component: () => import('../pages/DashboardPage.vue'),

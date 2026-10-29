@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useMiBandeja } from '../../application/composables/useInspecciones';
 import Skeleton from '../components/atoms/Skeleton.vue';
+import ActaInspeccionDetalle from '../components/organisms/ActaInspeccionDetalle.vue';
 import { extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
 import { diasHasta, formatoFecha } from '../utils/fechas';
 import type { AsignacionInspeccion } from '../../domain/entities/Inspecciones.entity';
@@ -26,6 +27,10 @@ const visita = (i: AsignacionInspeccion) => {
   if (d === 0) return { texto: 'Visita hoy', clase: 'bg-[#0d6efd] text-white' };
   return { texto: `Visita el ${formatoFecha(i.fecha_programada)}`, clase: 'bg-blue-50 dark:bg-blue-950/40 text-[#0d6efd] dark:text-blue-300' };
 };
+
+/** Observada en la 1.ª visita: toca la reinspección cuando venza el plazo de subsanación */
+const esReinspeccion = (i: AsignacionInspeccion) => i.ultima_acta_resultado === 'OBSERVADO';
+const actaAbierta = ref<number | null>(null);
 
 const plazo = (fecha: string) => {
   const d = diasHasta(fecha);
@@ -110,10 +115,40 @@ const plazo = (fecha: string) => {
           <span class="font-semibold">Indicaciones:</span> {{ i.indicaciones }}
         </p>
 
+        <div
+          v-if="esReinspeccion(i)"
+          class="text-xs rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 p-3 space-y-1"
+        >
+          <p class="font-semibold">
+            Reinspección: acta N° {{ i.ultima_acta_numero }} observada
+            <template v-if="i.fecha_limite_subsanacion"> · plazo para subsanar hasta el {{ formatoFecha(i.fecha_limite_subsanacion) }}</template>
+          </p>
+          <p class="whitespace-pre-line line-clamp-3">{{ i.ultima_acta_observaciones }}</p>
+        </div>
+
         <p class="text-[11px] text-neutral-500 dark:text-neutral-400">
           {{ plazo(i.fecha_vencimiento) }} · Asignado por {{ i.asignado_por }}
         </p>
+
+        <div class="flex flex-col sm:flex-row gap-2 pt-1">
+          <router-link
+            :to="`/inspector/acta/${i.id}`"
+            class="flex-1 h-11 rounded-xl bg-[#0d6efd] hover:bg-blue-600 text-white text-sm font-semibold flex items-center justify-center"
+          >
+            {{ esReinspeccion(i) ? 'Registrar reinspección' : 'Registrar acta' }}
+          </router-link>
+          <button
+            v-if="i.ultima_acta_id"
+            type="button"
+            class="h-11 px-4 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+            @click="actaAbierta = i.ultima_acta_id"
+          >
+            Ver acta anterior
+          </button>
+        </div>
       </li>
     </ul>
+
+    <ActaInspeccionDetalle :acta-id="actaAbierta" vista="inspector" @close="actaAbierta = null" />
   </div>
 </template>

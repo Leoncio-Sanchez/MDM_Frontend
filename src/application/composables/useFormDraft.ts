@@ -56,6 +56,10 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
     }, debounceMs);
   };
 
+  // El reinicio del formulario no es un cambio del usuario: no debe volver a guardarse
+  // como borrador (si no, el siguiente formulario se abre con esos valores viejos)
+  let omitirSiguienteGuardado = false;
+
   // Descartar y limpiar borrador
   const clearDraft = () => {
     clearTimeout(timeoutId);
@@ -64,6 +68,7 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
     } catch (e) {}
     hasDraft.value = false;
     lastSavedAt.value = null;
+    omitirSiguienteGuardado = true;
     form.value = { ...initialData };
   };
 
@@ -76,6 +81,7 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
       } catch (e) {}
       hasDraft.value = false;
       lastSavedAt.value = null;
+      omitirSiguienteGuardado = true;
     }
     form.value = { ...initialData, ...data };
   };
@@ -84,6 +90,10 @@ export function useFormDraft<T extends Record<string, any>>(options: UseFormDraf
   watch(
     form,
     () => {
+      if (omitirSiguienteGuardado) {
+        omitirSiguienteGuardado = false;
+        return;
+      }
       saveDraft();
     },
     { deep: true }

@@ -1,7 +1,8 @@
 import { computed, type Ref } from 'vue';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { DatosLocalInspeccion, NuevaAsignacion, Reasignacion } from '../../domain/entities/Inspecciones.entity';
+import type { DatosLocalInspeccion, NuevaActa, NuevaAsignacion, Reasignacion } from '../../domain/entities/Inspecciones.entity';
+import type { VistaActa } from '../../domain/ports/InspeccionesRepository.port';
 
 const KEY = ['inspecciones'] as const;
 
@@ -64,6 +65,36 @@ export function useReasignarInspector() {
   const invalidar = useInvalidar();
   return useMutation({
     mutationFn: ({ id, datos }: { id: number; datos: Reasignacion }) => container.inspecciones.reasignar(id, datos),
+    onSuccess: invalidar,
+  });
+}
+
+/** Actas del expediente (oficina) */
+export function useActasDeExpediente(expedienteId: Ref<number | null>) {
+  return useQuery({
+    queryKey: computed(() => [...KEY, 'actas-expediente', expedienteId.value]),
+    queryFn: () => container.inspecciones.actasDeExpediente(expedienteId.value!),
+    enabled: computed(() => expedienteId.value !== null),
+  });
+}
+
+/** Un acta con la lista de sus fotos */
+export function useActa(actaId: Ref<number | null>, vista: VistaActa) {
+  return useQuery({
+    queryKey: computed(() => [...KEY, 'acta', vista, actaId.value]),
+    queryFn: () => container.inspecciones.acta(actaId.value!, vista),
+    enabled: computed(() => actaId.value !== null),
+    // El acta no cambia una vez registrada
+    staleTime: Infinity,
+  });
+}
+
+/** El inspector registra el acta de su visita */
+export function useRegistrarActa() {
+  const invalidar = useInvalidar();
+  return useMutation({
+    mutationFn: ({ asignacionId, acta, onProgreso }: { asignacionId: number; acta: NuevaActa; onProgreso?: (p: number) => void }) =>
+      container.inspecciones.registrarActa(asignacionId, acta, onProgreso),
     onSuccess: invalidar,
   });
 }

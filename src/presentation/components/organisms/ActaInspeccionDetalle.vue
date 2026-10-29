@@ -143,6 +143,7 @@ const titulo = computed(() => (acta.value ? `Acta N° ${acta.value.numero_acta}`
           <h2 id="acta-titulo" class="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">{{ titulo }}</h2>
           <p v-if="acta" class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
             Expediente N° {{ acta.numero_expediente }} · {{ acta.visita === 1 ? '1.ª visita' : 'Reinspección' }} · {{ acta.inspector_nombre }}
+            <template v-if="acta.acompanantes?.length"> con {{ acta.acompanantes.map((a) => a.nombre).join(', ') }}</template>
           </p>
         </div>
         <button

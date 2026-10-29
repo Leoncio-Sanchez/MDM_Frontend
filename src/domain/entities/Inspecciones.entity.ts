@@ -35,6 +35,16 @@ export interface AnulacionActa {
   documento?: string | null;
 }
 
+/** Inspector que acompaña al responsable; el acta la registra solo el responsable */
+export interface AcompananteInspeccion {
+  id: number;
+  nombre: string;
+  /** No viene en el acta (allí se guarda quién fue, aunque luego lo desactiven) */
+  activo?: boolean;
+}
+
+export const MAXIMO_ACOMPANANTES = 3;
+
 export interface FotoActa {
   id: number;
   tipo: TipoFotoActa;
@@ -50,6 +60,8 @@ export interface ActaInspeccion extends Record<GrupoChecklist, EstadoChecklist> 
   asignacion_id: number;
   inspector_id: number;
   inspector_nombre: string;
+  /** Quiénes acompañaron la visita */
+  acompanantes: AcompananteInspeccion[];
   numero_acta: string;
   visita: 1 | 2;
   fecha_visita: string;
@@ -96,6 +108,7 @@ export interface ExpedientePorInspeccionar extends UltimaActa {
   inspector_id: number | null;
   inspector_nombre: string | null;
   inspector_activo: boolean | null;
+  acompanantes: AcompananteInspeccion[];
   nombre_comercial: string | null;
   direccion: string | null;
   fecha_programada: string | null;
@@ -109,6 +122,8 @@ export interface InspectorDisponible {
   nombre: string;
   /** Inspecciones asignadas que aún no se realizan */
   pendientes: number;
+  /** Inspecciones pendientes en las que va como acompañante */
+  acompanando: number;
 }
 
 export interface AsignacionInspeccion extends UltimaActa {
@@ -122,6 +137,9 @@ export interface AsignacionInspeccion extends UltimaActa {
   solicitante_telefono: string | null;
   inspector_id: number;
   inspector_nombre: string;
+  acompanantes: AcompananteInspeccion[];
+  /** Solo en la bandeja: false si el inspector va como acompañante */
+  es_responsable?: boolean;
   nombre_comercial: string;
   direccion: string;
   fecha_programada: string | null;
@@ -139,6 +157,8 @@ export interface DatosLocalInspeccion {
   direccion: string;
   fecha_programada: string | null;
   indicaciones: string | null;
+  /** Ids de los acompañantes (el responsable no va aquí) */
+  acompanantes: number[];
 }
 
 export interface NuevaAsignacion extends DatosLocalInspeccion {
@@ -148,6 +168,7 @@ export interface NuevaAsignacion extends DatosLocalInspeccion {
 
 export interface Reasignacion {
   inspector_id: number;
+  acompanantes: number[];
   motivo: string;
   fecha_programada: string | null;
   indicaciones: string | null;

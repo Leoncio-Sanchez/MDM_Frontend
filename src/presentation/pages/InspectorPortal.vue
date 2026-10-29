@@ -4,12 +4,14 @@ import { useMiBandeja } from '../../application/composables/useInspecciones';
 import Skeleton from '../components/atoms/Skeleton.vue';
 import ActaInspeccionDetalle from '../components/organisms/ActaInspeccionDetalle.vue';
 import { extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
+import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 import { diasHasta, formatoFecha } from '../utils/fechas';
 import type { AsignacionInspeccion } from '../../domain/entities/Inspecciones.entity';
 
 /**
- * Bandeja del inspector de campo: solo las inspecciones que el jefe de ITSE le asignó
- * y que aún no se resuelven. Ordenadas por fecha de visita y luego por vencimiento.
+ * Bandeja del inspector de campo: las inspecciones que el jefe de ITSE le asignó como
+ * responsable o acompañante y que aún no se resuelven. Ordenadas por fecha de visita y
+ * luego por vencimiento. El acta la registra solo el responsable.
  */
 const { data, isLoading, isError, error } = useMiBandeja();
 const inspecciones = computed<AsignacionInspeccion[]>(() => data.value ?? []);
@@ -31,6 +33,11 @@ const visita = (i: AsignacionInspeccion) => {
 /** Observada en la 1.ª visita: toca la reinspección cuando venza el plazo de subsanación */
 const esReinspeccion = (i: AsignacionInspeccion) => i.ultima_acta_resultado === 'OBSERVADO';
 const actaAbierta = ref<number | null>(null);
+
+const auth = useAuthStore();
+/** Para el acompañante: quiénes más van, sin contarlo a él */
+const otrosAcompanantes = (i: AsignacionInspeccion) =>
+  i.acompanantes.filter((a) => String(a.id) !== String(auth.user?.id)).map((a) => a.nombre);
 
 const plazo = (fecha: string) => {
   const d = diasHasta(fecha);
@@ -138,12 +145,22 @@ const plazo = (fecha: string) => {
           <p class="whitespace-pre-line break-words">Motivo: {{ i.acta_anulada_motivo }}</p>
         </div>
 
+        <p v-if="i.es_responsable === false" class="text-xs text-neutral-700 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl p-3">
+          <span class="font-semibold">Usted acompaña esta inspección.</span>
+          Responsable: {{ i.inspector_nombre }}, quien registra el acta.
+          <template v-if="otrosAcompanantes(i).length"> También van: {{ otrosAcompanantes(i).join(', ') }}.</template>
+        </p>
+        <p v-else-if="i.acompanantes.length" class="text-xs text-neutral-700 dark:text-neutral-300">
+          <span class="font-semibold">Lo acompañan:</span> {{ i.acompanantes.map((a) => a.nombre).join(', ') }}
+        </p>
+
         <p class="text-[11px] text-neutral-500 dark:text-neutral-400">
           {{ plazo(i.fecha_vencimiento) }} · Asignado por {{ i.asignado_por }}
         </p>
 
         <div class="flex flex-col sm:flex-row gap-2 pt-1">
           <router-link
+            v-if="i.es_responsable !== false"
             :to="`/inspector/acta/${i.id}`"
             class="flex-1 h-11 rounded-xl bg-[#0d6efd] hover:bg-blue-600 text-white text-sm font-semibold flex items-center justify-center"
           >

@@ -45,7 +45,8 @@ const routes = [
         path: 'inspector',
         name: 'inspector',
         component: () => import('../pages/InspectorPortal.vue'),
-        meta: { allowedRoles: ['INSPECTOR'] }
+        // También el personal de oficina marcado como inspector
+        meta: { allowedRoles: ['INSPECTOR', 'ADMIN_MUNICIPALIDAD'], permisos: ['inspector'] }
       },
       {
         path: 'admin',
@@ -58,6 +59,7 @@ const routes = [
       { path: 'admin/giros', component: () => import('../pages/GirosPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },
       { path: 'admin/inspectores', component: () => import('../pages/InspectoresPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
       { path: 'admin/itse', component: () => import('../pages/ItsePage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
+      { path: 'admin/itse/asignaciones', component: () => import('../pages/AsignacionInspeccionesPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['jefe_itse'] } },
       { path: 'admin/itse/por-renovar', component: () => import('../pages/ItsePorRenovarPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['itse'] } },
       { path: 'admin/licencias-funcionamiento', component: () => import('../pages/LicenciasFuncionamientoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['licencias'] } },
       { path: 'admin/niveles-riesgo', component: () => import('../pages/NivelesRiesgoPage.vue'), meta: { allowedRoles: ['ADMIN_MUNICIPALIDAD'], permisos: ['admin'] } },

@@ -59,6 +59,17 @@ const adminSections: NavSection[] = [
         path: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
       },
       {
+        to: '/admin/itse/asignaciones',
+        label: 'Asignar Inspecciones',
+        path: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+      },
+      {
+        // Personal de oficina que también sale a inspeccionar
+        to: '/inspector',
+        label: 'Mis Inspecciones',
+        path: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4'
+      },
+      {
         to: '/admin/inspectores',
         label: 'Inspectores Técnicos',
         path: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
@@ -259,7 +270,7 @@ const isItemActive = (item: NavItem): boolean => {
                   : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800/60 font-medium',
                 'relative flex items-center rounded-lg text-[13px] transition-all duration-150 group'
               ]"
-              :title="isCollapsed ? 'Hoja de Ruta ITSE' : ''"
+              :title="isCollapsed ? 'Mis Inspecciones' : ''"
             >
               <!-- Indicador Activo de Acento Izquierdo -->
               <span 
@@ -277,7 +288,7 @@ const isItemActive = (item: NavItem): boolean => {
               >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
-              <span v-if="!isCollapsed" class="truncate">Hoja de Ruta ITSE</span>
+              <span v-if="!isCollapsed" class="truncate">Mis Inspecciones</span>
             </router-link>
           </div>
         </div>

@@ -31,6 +31,8 @@ interface Props {
   placeholderBusqueda?: string;
   /** Filas sin Editar / Eliminar (p. ej. expedientes anulados); las acciones propias se mantienen */
   filaBloqueada?: (row: any) => boolean;
+  /** Sin "Nuevo Registro": los registros nacen de las acciones de cada fila */
+  sinAlta?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -108,7 +110,7 @@ const emit = defineEmits<{
             </svg>
           </button>
         </div>
-        <Button v-if="!soloLectura" variant="primary" @click="emit('add')" class="shadow-xs cursor-pointer">+ Nuevo Registro</Button>
+        <Button v-if="!soloLectura && !sinAlta" variant="primary" @click="emit('add')" class="shadow-xs cursor-pointer">+ Nuevo Registro</Button>
         <slot name="acciones-encabezado" />
       </div>
     </div>

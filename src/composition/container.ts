@@ -8,6 +8,7 @@ import { ReportesRepositoryImpl } from '../infrastructure/repositories/ReportesR
 import { EstadosRepositoryImpl } from '../infrastructure/repositories/EstadosRepository.impl';
 import { ExpedientesRepositoryImpl } from '../infrastructure/repositories/ExpedientesRepository.impl';
 import { GirosRepositoryImpl } from '../infrastructure/repositories/GirosRepository.impl';
+import { InspeccionesRepositoryImpl } from '../infrastructure/repositories/InspeccionesRepository.impl';
 import { InspectoresRepositoryImpl } from '../infrastructure/repositories/InspectoresRepository.impl';
 import { ItseRepositoryImpl } from '../infrastructure/repositories/ItseRepository.impl';
 import { LicenciasFuncionamientoRepositoryImpl } from '../infrastructure/repositories/LicenciasFuncionamientoRepository.impl';
@@ -30,6 +31,7 @@ import type { ReportesRepositoryPort } from '../domain/ports/ReportesRepository.
 import type { EstadosRepositoryPort } from '../domain/ports/EstadosRepository.port';
 import type { ExpedientesRepositoryPort } from '../domain/ports/ExpedientesRepository.port';
 import type { GirosRepositoryPort } from '../domain/ports/GirosRepository.port';
+import type { InspeccionesRepositoryPort } from '../domain/ports/InspeccionesRepository.port';
 import type { InspectoresRepositoryPort } from '../domain/ports/InspectoresRepository.port';
 import type { ItseRepositoryPort } from '../domain/ports/ItseRepository.port';
 import type { LicenciasFuncionamientoRepositoryPort } from '../domain/ports/LicenciasFuncionamientoRepository.port';
@@ -53,6 +55,7 @@ export interface Container {
   estados: EstadosRepositoryPort;
   expedientes: ExpedientesRepositoryPort;
   giros: GirosRepositoryPort;
+  inspecciones: InspeccionesRepositoryPort;
   inspectores: InspectoresRepositoryPort;
   itse: ItseRepositoryPort;
   licenciasFuncionamiento: LicenciasFuncionamientoRepositoryPort;
@@ -77,6 +80,7 @@ export const container: Container = {
   estados: new EstadosRepositoryImpl(),
   expedientes: new ExpedientesRepositoryImpl(),
   giros: new GirosRepositoryImpl(),
+  inspecciones: new InspeccionesRepositoryImpl(),
   inspectores: new InspectoresRepositoryImpl(),
   itse: new ItseRepositoryImpl(),
   licenciasFuncionamiento: new LicenciasFuncionamientoRepositoryImpl(),

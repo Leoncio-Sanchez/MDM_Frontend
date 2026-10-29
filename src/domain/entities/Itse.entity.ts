@@ -83,3 +83,22 @@ export interface FiltroPorRenovar {
   fecha_desde?: string;
   fecha_hasta?: string;
 }
+
+/** Acta de inspección que sustenta el certificado ITSE de un expediente */
+export interface InspeccionExpedienteItse {
+  numero_expediente: number;
+  /** El procedimiento requiere ITSE (y el expediente se recibió desde que se exige el acta en el sistema) */
+  exige_acta: boolean;
+  se_puede_emitir: boolean;
+  /** Por qué aún no se puede emitir (null si se puede) */
+  mensaje: string | null;
+  /** Última acta vigente (las anuladas no cuentan) */
+  acta: {
+    id: number;
+    numero_acta: string;
+    resultado: 'APROBADO' | 'OBSERVADO' | 'DESAPROBADO';
+    fecha_visita: string;
+    area_m2: number;
+    aforo: number;
+  } | null;
+}

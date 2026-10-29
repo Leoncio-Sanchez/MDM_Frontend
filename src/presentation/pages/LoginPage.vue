@@ -139,7 +139,9 @@ const handleSubmit = (e: Event) => {
 
         <p class="mt-6 text-center text-xs text-neutral-500">
           ¿Es ciudadano?
-          <router-link to="/consulta" class="font-semibold text-[#0B3C5D] hover:underline">Consulte el estado de su trámite</router-link>
+          <router-link to="/ciudadano/ingresar" class="font-semibold text-[#0B3C5D] hover:underline">Ingrese a Mis trámites</router-link>
+          o
+          <router-link to="/consulta" class="font-semibold text-[#0B3C5D] hover:underline">consulte sin cuenta</router-link>
         </p>
 
         <!-- Sello de Seguridad -->

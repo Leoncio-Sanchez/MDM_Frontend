@@ -12,6 +12,13 @@ const uiStore = useUiStore();
 const logoutMutation = useLogout();
 
 const user = computed(() => authStore.user);
+// El ciudadano entra con su documento: su usuario interno "ciu_<documento>" no se le muestra
+const nombreVisible = computed(() => {
+  const nombre = user.value?.username ?? '';
+  if (!nombre.startsWith('ciu_')) return nombre;
+  const documento = nombre.slice(4);
+  return `${documento.length === 11 ? 'RUC' : 'DNI'} ${documento}`;
+});
 const isLogoutModalOpen = ref(false);
 
 const openLogoutModal = () => {
@@ -23,10 +30,12 @@ const cancelLogout = () => {
 };
 
 const confirmLogout = () => {
+  // Se toma antes de cerrar la sesión: después ya no hay usuario
+  const esCiudadano = authStore.user?.role === 'CIUDADANO' || authStore.user?.role === 'EMPRESA';
   logoutMutation.mutate(undefined, {
     onSuccess: () => {
       isLogoutModalOpen.value = false;
-      router.push('/login');
+      router.push(esCiudadano ? '/ciudadano/ingresar' : '/login');
     }
   });
 };
@@ -93,14 +102,14 @@ const confirmLogout = () => {
       <!-- Información del Usuario en Sesión -->
       <div class="flex items-center gap-2.5">
         <div class="text-right hidden sm:block">
-          <p class="text-xs font-bold text-white leading-tight">{{ user?.username }}</p>
+          <p class="text-xs font-bold text-white leading-tight">{{ nombreVisible }}</p>
           <span class="inline-block text-[10px] font-semibold text-blue-300 bg-blue-900/60 border border-blue-700/60 px-1.5 py-0.2 rounded mt-0.5">
             {{ user?.role === 'ADMIN_MUNICIPALIDAD' ? 'Administrador' : user?.role === 'INSPECTOR' ? 'Inspector' : user?.role }}
           </span>
         </div>
         
         <div class="w-9 h-9 rounded-full bg-[#0d6efd] text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-blue-400/40">
-          {{ user?.username?.charAt(0).toUpperCase() }}
+          {{ nombreVisible.charAt(0).toUpperCase() }}
         </div>
       </div>
 
@@ -137,7 +146,7 @@ const confirmLogout = () => {
             Confirmación de Seguridad
           </h3>
           <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
-            ¿Está seguro de que desea salir del sistema <strong class="text-neutral-800 dark:text-neutral-200">MUNI_APP</strong>? Su sesión activa actual para <span class="font-semibold text-neutral-800 dark:text-neutral-200 font-mono">@{{ user?.username }}</span> finalizará de forma segura.
+            ¿Está seguro de que desea salir del sistema <strong class="text-neutral-800 dark:text-neutral-200">MUNI_APP</strong>? Su sesión activa actual para <span class="font-semibold text-neutral-800 dark:text-neutral-200 font-mono">{{ nombreVisible }}</span> finalizará de forma segura.
           </p>
         </div>
 

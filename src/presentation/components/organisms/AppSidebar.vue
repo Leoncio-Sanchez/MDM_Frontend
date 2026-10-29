@@ -227,7 +227,7 @@ const isItemActive = (item: NavItem): boolean => {
                   : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800/60 font-medium',
                 'relative flex items-center rounded-lg text-[13px] transition-all duration-150 group'
               ]"
-              :title="isCollapsed ? 'Mi cuenta' : ''"
+              :title="isCollapsed ? 'Mis trámites' : ''"
             >
               <!-- Indicador Activo de Acento Izquierdo -->
               <span 
@@ -245,7 +245,7 @@ const isItemActive = (item: NavItem): boolean => {
               >
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span v-if="!isCollapsed" class="truncate">Mi cuenta</span>
+              <span v-if="!isCollapsed" class="truncate">Mis trámites</span>
             </router-link>
           </div>
         </div>

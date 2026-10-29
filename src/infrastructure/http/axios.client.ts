@@ -45,7 +45,13 @@ httpClient.interceptors.response.use(
 
     // Si el error es 401 y la solicitud no es de autenticación
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      const isAuthEndpoint = originalRequest.url?.includes('/auth/jwt/create/') || 
+      // Endpoints públicos (consulta, cuenta del ciudadano): un 401 es "contraseña incorrecta",
+      // no una sesión vencida; el error llega tal cual al formulario
+      if (originalRequest.url?.includes('/publico/')) {
+        return Promise.reject(error);
+      }
+
+      const isAuthEndpoint = originalRequest.url?.includes('/auth/jwt/create/') ||
                              originalRequest.url?.includes('/auth/jwt/refresh/');
 
       if (isAuthEndpoint) {

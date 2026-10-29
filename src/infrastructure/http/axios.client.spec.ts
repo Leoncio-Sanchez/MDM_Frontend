@@ -105,6 +105,16 @@ describe('cliente HTTP', () => {
     expect(renovar).not.toHaveBeenCalled();
   });
 
+  it('una contraseña incorrecta del ciudadano no cierra ni redirige nada', async () => {
+    guardarSesion('token-del-personal');
+    httpClient.defaults.adapter = servidor('nunca');
+    const renovar = vi.spyOn(axios, 'post');
+
+    await expect(httpClient.post('/publico/cuenta/ingresar/', { documento: '12345678', clave: 'x' })).rejects.toMatchObject({ response: { status: 401 } });
+    expect(renovar).not.toHaveBeenCalled();
+    expect(tokenGuardado()).toBe('token-del-personal');
+  });
+
   it('los demás errores llegan tal cual a la pantalla', async () => {
     guardarSesion('token-1');
     httpClient.defaults.adapter = vi.fn<AxiosAdapter>(async (config) => respuesta(config, 422, { error: 'Dato inválido' }));

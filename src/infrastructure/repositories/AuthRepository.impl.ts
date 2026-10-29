@@ -1,6 +1,7 @@
 import type { AuthRepositoryPort } from '../../domain/ports/AuthRepository.port';
 import type { LoginCredentials } from '../../domain/entities/LoginCredentials.entity';
 import type { User } from '../../domain/entities/User.entity';
+import type { DatosCuentaCiudadano } from '../../domain/entities/ConsultaPublica.entity';
 import { httpClient } from '../http/axios.client';
 
 /** Respuesta de GET /auth/users/me/ */
@@ -23,6 +24,26 @@ const aUsuario = (dto: UsuarioActualDTO): User => ({
 export class AuthRepositoryImpl implements AuthRepositoryPort {
   async login(credentials: LoginCredentials): Promise<{ user: User; token: string }> {
     const { data } = await httpClient.post('/auth/jwt/create/', credentials);
+    return this.sesion(data);
+  }
+
+  async ingresarCiudadano(documento: string, clave: string): Promise<{ user: User; token: string }> {
+    const { data } = await httpClient.post('/publico/cuenta/ingresar/', { documento, clave });
+    return this.sesion(data);
+  }
+
+  async registrarCiudadano(datos: DatosCuentaCiudadano): Promise<{ user: User; token: string }> {
+    const { data } = await httpClient.post('/publico/cuenta/registro/', datos);
+    return this.sesion(data);
+  }
+
+  async restablecerClaveCiudadano(datos: DatosCuentaCiudadano): Promise<{ user: User; token: string }> {
+    const { data } = await httpClient.post('/publico/cuenta/restablecer/', datos);
+    return this.sesion(data);
+  }
+
+  /** Guarda el refresh token y trae el usuario con el token recién emitido */
+  private async sesion(data: { access: string; refresh?: string }): Promise<{ user: User; token: string }> {
     const token: string = data.access;
 
     if (data.refresh) {

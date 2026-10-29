@@ -8,6 +8,12 @@ export interface UsuarioPerfil {
   licencias: boolean;
   itse: boolean;
   admin: boolean;
+  /** Inspector de campo: solo sus locales asignados */
+  es_inspector: boolean;
+  /** Jefatura de ITSE: asigna inspectores (requiere "itse") */
+  es_jefe_itse: boolean;
+  /** Solo lectura y descarga de todos los reportes */
+  reportes_completos: boolean;
 }
 
 export interface Usuarios {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import ModalShell from '../components/molecules/ModalShell.vue';
@@ -48,8 +48,31 @@ const { form, hasDraft, clearDraft, setFormData, loadDraft } = useFormDraft({
     licencias: false,
     itse: false,
     admin: false,
+    es_inspector: false,
+    es_jefe_itse: false,
+    reportes_completos: false,
   },
 });
+
+/** Funciones especiales del perfil (acordadas con el equipo) */
+const funcionesEspeciales = [
+  { clave: 'es_inspector', titulo: 'Inspector de campo', detalle: 'Solo ve y llena los locales que se le asignan (portal del inspector).' },
+  { clave: 'es_jefe_itse', titulo: 'Jefe de ITSE', detalle: 'Asigna inspectores y administra sus cuentas. Requiere "Inspecciones ITSE".' },
+  { clave: 'reportes_completos', titulo: 'Reportes completos', detalle: 'Solo lectura y descarga de todos los reportes (Subgerente, Auditor).' },
+] as const;
+type FuncionEspecial = (typeof funcionesEspeciales)[number]['clave'];
+
+// El jefe de ITSE trabaja dentro de ITSE (el servidor también lo exige)
+const funcionBloqueada = (clave: FuncionEspecial) => clave === 'es_jefe_itse' && !form.value.itse;
+const alternarFuncion = (clave: FuncionEspecial) => {
+  if (!funcionBloqueada(clave)) form.value[clave] = !form.value[clave];
+};
+watch(
+  () => form.value.itse,
+  (itse) => {
+    if (!itse) form.value.es_jefe_itse = false;
+  },
+);
 
 const isSubmitting = computed(() => crear.isPending.value || actualizar.isPending.value);
 
@@ -88,6 +111,9 @@ const displayData = computed(() => {
       if (u.perfil.licencias) active.push('Licencias');
       if (u.perfil.itse) active.push('ITSE');
       if (u.perfil.admin) active.push('Catálogos / Admin');
+      if (u.perfil.es_jefe_itse) active.push('Jefe ITSE');
+      if (u.perfil.es_inspector) active.push('Inspector');
+      if (u.perfil.reportes_completos) active.push('Reportes completos');
       permisos = active.length > 0 ? active.join(', ') : 'Ninguno';
     }
 
@@ -135,6 +161,9 @@ const handleEdit = (item: any) => {
     licencias: !!perfil.licencias,
     itse: !!perfil.itse,
     admin: !!perfil.admin,
+    es_inspector: !!perfil.es_inspector,
+    es_jefe_itse: !!perfil.es_jefe_itse,
+    reportes_completos: !!perfil.reportes_completos,
   });
 
   isModalOpen.value = true;
@@ -199,6 +228,9 @@ const handleSubmit = async () => {
       licencias: !!form.value.licencias,
       itse: !!form.value.itse,
       admin: !!form.value.admin,
+      es_inspector: !!form.value.es_inspector,
+      es_jefe_itse: !!form.value.itse && !!form.value.es_jefe_itse,
+      reportes_completos: !!form.value.reportes_completos,
     },
   };
 
@@ -547,6 +579,41 @@ const handleSubmit = async () => {
             <div>
               <p class="text-xs font-bold text-neutral-800 dark:text-neutral-200">Catálogos y Usuarios</p>
               <p class="text-[11px] text-neutral-500 dark:text-neutral-400">Acceso a catálogos maestros y gestión de usuarios.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Funciones especiales -->
+        <h5 class="text-[11px] font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider pt-2">Funciones especiales</h5>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div
+            v-for="f in funcionesEspeciales"
+            :key="f.clave"
+            role="checkbox"
+            :aria-checked="form[f.clave]"
+            :aria-disabled="funcionBloqueada(f.clave)"
+            tabindex="0"
+            :class="[
+              'p-3 rounded-xl border text-left transition-all flex items-start gap-3',
+              funcionBloqueada(f.clave)
+                ? 'opacity-50 cursor-not-allowed border-neutral-200 dark:border-neutral-800'
+                : form[f.clave]
+                  ? 'cursor-pointer bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-800'
+                  : 'cursor-pointer border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/40',
+            ]"
+            @click="alternarFuncion(f.clave)"
+            @keydown.space.prevent="alternarFuncion(f.clave)"
+          >
+            <input
+              :checked="form[f.clave]"
+              type="checkbox"
+              tabindex="-1"
+              :disabled="funcionBloqueada(f.clave)"
+              class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 pointer-events-none"
+            />
+            <div>
+              <p class="text-xs font-bold text-neutral-800 dark:text-neutral-200">{{ f.titulo }}</p>
+              <p class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ f.detalle }}</p>
             </div>
           </div>
         </div>

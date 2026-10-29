@@ -6,8 +6,11 @@
  * @method Ruta A — Golden Source Validado
  */
 
-/** Accesos del perfil operativo (usuarios_perfiles). */
-export type Permiso = 'expedientes' | 'licencias' | 'itse' | 'admin';
+/**
+ * Accesos del perfil operativo (usuarios_perfiles).
+ * inspector: inspector de campo · jefe_itse: asigna inspectores · reportes: solo lectura de reportes
+ */
+export type Permiso = 'expedientes' | 'licencias' | 'itse' | 'admin' | 'inspector' | 'jefe_itse' | 'reportes';
 export type Permisos = Record<Permiso, boolean>;
 
 export interface User {

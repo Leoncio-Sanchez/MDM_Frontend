@@ -29,14 +29,14 @@ type Pestana = 'licencias' | 'itse' | 'expedientes' | 'bajas' | 'improcedentes';
 
 // Reportes de auditoría (OCI): cada usuario ve solo los tipos de su acceso
 const tiposAuditoria = computed<TipoAuditoria[]>(() =>
-  (['licencias', 'itse'] as const).filter((t) => authStore.puede([t])),
+  (['licencias', 'itse'] as const).filter((t) => authStore.puede([t, 'reportes'])),
 );
 
 const pestanas = computed(() =>
   ([
-    { id: 'licencias', titulo: 'Padrón de licencias', visible: authStore.puede(['licencias']) },
-    { id: 'itse', titulo: 'ITSE por vencer', visible: authStore.puede(['itse']) },
-    { id: 'expedientes', titulo: 'Expedientes en riesgo de plazo', visible: authStore.puede(['expedientes', 'licencias', 'itse']) },
+    { id: 'licencias', titulo: 'Padrón de licencias', visible: authStore.puede(['licencias', 'reportes']) },
+    { id: 'itse', titulo: 'ITSE por vencer', visible: authStore.puede(['itse', 'reportes']) },
+    { id: 'expedientes', titulo: 'Expedientes en riesgo de plazo', visible: authStore.puede(['expedientes', 'licencias', 'itse', 'reportes']) },
     { id: 'bajas', titulo: 'Anuladas y revocadas', visible: tiposAuditoria.value.length > 0 },
     { id: 'improcedentes', titulo: 'Improcedentes', visible: tiposAuditoria.value.length > 0 },
   ] as { id: Pestana; titulo: string; visible: boolean }[]).filter((p) => p.visible),
@@ -46,7 +46,8 @@ const activa = ref<Pestana>(pestanas.value[0]?.id ?? 'expedientes');
 // ── 1. Padrón de licencias ───────────────────────────────────────────
 const rango = ref(rangoMes(0));
 
-const puedeLicencias = computed(() => authStore.puede(['licencias']));
+// "Reportes completos" (Subgerente, Auditor) ve todas las pestañas en solo lectura
+const puedeLicencias = computed(() => authStore.puede(['licencias', 'reportes']));
 const padron = usePadronLicencias(rango, puedeLicencias);
 const resumen = computed(() => padron.data.value?.resumen);
 const nombreMes = computed(() => nombrePeriodo(rango.value));
@@ -118,7 +119,7 @@ const exportarPadron = () =>
 // ── 2. ITSE por vencer ───────────────────────────────────────────────
 const diasItse = ref(30);
 const filtroItse = computed<FiltroPorRenovar>(() => ({ dias: diasItse.value }));
-const puedeItse = computed(() => authStore.puede(['itse']));
+const puedeItse = computed(() => authStore.puede(['itse', 'reportes']));
 const itse = useItsePorRenovar(filtroItse, puedeItse);
 const { data: personasData } = usePersonasList();
 const personasById = computed(() => new Map((personasData.value ?? []).map((p: Personas) => [p.id, p])));

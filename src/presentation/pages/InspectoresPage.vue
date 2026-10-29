@@ -9,7 +9,8 @@ import {
 import { useFormDraft } from '../../application/composables/useFormDraft';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
-import { useToast, useDialog } from '../../infrastructure/store/useNotificationStore';
+import { useToast, useDialog, extractErrorMessage } from '../../infrastructure/store/useNotificationStore';
+import { useAuthStore } from '../../infrastructure/store/useAuthStore';
 
 const { data, isLoading, error } = useInspectoresList();
 const crearInspector = useCrearInspectores();
@@ -17,6 +18,10 @@ const actualizarInspector = useActualizarInspectores();
 const eliminar = useEliminarInspectores();
 const toast = useToast();
 const dialog = useDialog();
+const authStore = useAuthStore();
+
+// Ver: acceso ITSE. Crear, editar y desactivar cuentas de inspectores: solo el jefe de ITSE
+const puedeAdministrar = computed(() => authStore.puede(['jefe_itse']));
 
 const isModalOpen = ref(false);
 const isEditMode = ref(false);
@@ -42,7 +47,7 @@ const columns = [
   { key: 'username', label: 'USUARIO' },
   { key: 'nombre_completo', label: 'NOMBRES Y APELLIDOS' },
   { key: 'email', label: 'CORREO ELECTRÓNICO' },
-  { key: 'is_active', label: 'ESTADO' }
+  { key: 'estado', label: 'ESTADO' }
 ];
 
 const displayData = computed(() => {
@@ -52,7 +57,8 @@ const displayData = computed(() => {
     nombre_completo: (item.first_name || item.last_name) 
       ? `${item.first_name || ''} ${item.last_name || ''}`.trim()
       : (item.username || 'Inspector'),
-    is_active: item.is_active ? 'ACTIVO' : 'INACTIVO'
+    // Columna aparte: is_active se mantiene booleano para que Editar muestre el estado real
+    estado: item.is_active ? 'ACTIVO' : 'INACTIVO'
   }));
 });
 
@@ -80,12 +86,14 @@ const handleEdit = (item: any) => {
 };
 
 const handleDelete = async (item: any) => {
-  const ok = await dialog.confirmDelete({
-    title: 'Confirmar eliminación',
-    text: `¿Está seguro de revocar/eliminar al inspector ${item.username}?\nEsta acción no se puede deshacer.`,
+  const ok = await dialog.confirm({
+    variant: 'warning',
+    title: 'Desactivar inspector',
+    confirmText: 'Sí, desactivar',
+    text: `¿Desactivar la cuenta de ${item.username}?\nNo podrá iniciar sesión; su historial se conserva y se puede volver a activar editándolo.`,
     onConfirm: () => eliminar.mutateAsync(item.id),
   });
-  if (ok) toast.success('El registro se eliminó correctamente.');
+  if (ok) toast.success('La cuenta del inspector quedó desactivada.');
 };
 
 const handleSubmit = () => {
@@ -121,7 +129,7 @@ const handleSubmit = () => {
           toast.success('Los cambios se guardaron correctamente.');
         },
         onError: (err: any) => {
-          formError.value = err?.response?.data?.message || err?.message || 'Error al actualizar inspector';
+          formError.value = extractErrorMessage(err, 'Error al actualizar inspector');
         },
       }
     );
@@ -135,7 +143,7 @@ const handleSubmit = () => {
           toast.success('El registro se creó correctamente.');
         },
         onError: (err: any) => {
-          formError.value = err?.response?.data?.message || err?.message || 'Error al registrar inspector';
+          formError.value = extractErrorMessage(err, 'Error al registrar inspector');
         },
       }
     );
@@ -154,6 +162,9 @@ const handleSubmit = () => {
       :columns="columns"
       :data="displayData"
       :is-loading="isLoading"
+      :solo-lectura="!puedeAdministrar"
+      delete-label="Desactivar"
+      texto-vacio="Todavía no hay inspectores. El jefe de ITSE puede registrarlos aquí, o administración puede marcar a un usuario como inspector."
       @add="handleAdd"
       @edit="handleEdit"
       @delete="handleDelete"

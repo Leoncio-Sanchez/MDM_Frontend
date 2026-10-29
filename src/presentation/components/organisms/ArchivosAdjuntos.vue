@@ -2,10 +2,10 @@
 import { computed, ref, toRef } from 'vue';
 import ModalShell from '../molecules/ModalShell.vue';
 import Skeleton from '../atoms/Skeleton.vue';
-import { useArchivos, useEliminarArchivo, useSubirArchivo } from '../../../application/composables/useArchivos';
+import { useArchivos, useInactivarArchivo, useSubirArchivo } from '../../../application/composables/useArchivos';
 import { container } from '../../../composition/container';
-import { POLITICA_ARCHIVOS, type ArchivoAdjunto, type ModuloArchivos } from '../../../domain/entities/Archivo.entity';
-import { useDialog, useToast, extractErrorMessage } from '../../../infrastructure/store/useNotificationStore';
+import { MOTIVO_BAJA_ARCHIVO, POLITICA_ARCHIVOS, type ArchivoAdjunto, type ModuloArchivos } from '../../../domain/entities/Archivo.entity';
+import { useToast, extractErrorMessage, extractFieldErrors } from '../../../infrastructure/store/useNotificationStore';
 
 /**
  * Adjuntos de un expediente, licencia o ITSE: actas, fotos de inspección y documentos.
@@ -24,14 +24,16 @@ const props = defineProps<Props>();
 const emit = defineEmits<{ close: [] }>();
 
 const toast = useToast();
-const dialog = useDialog();
 
 const registroId = toRef(props, 'registroId');
 const { data, isLoading, isError, error } = useArchivos(props.modulo, registroId);
 const subir = useSubirArchivo(props.modulo, registroId);
-const eliminar = useEliminarArchivo(props.modulo, registroId);
+const inactivar = useInactivarArchivo(props.modulo, registroId);
 
 const archivos = computed<ArchivoAdjunto[]>(() => data.value ?? []);
+// Los dados de baja no se borran: se muestran aparte, para consulta y auditoría
+const activos = computed(() => archivos.value.filter((a) => a.activo !== false));
+const inactivos = computed(() => archivos.value.filter((a) => a.activo === false));
 
 // ── Subida ───────────────────────────────────────────────────────────
 interface Subida {
@@ -106,7 +108,7 @@ const alSoltar = (e: DragEvent) => {
   subirArchivos(e.dataTransfer?.files ?? null);
 };
 
-// ── Ver / descargar / eliminar ───────────────────────────────────────
+// ── Ver / descargar ────────────────────────────────────────────────────────────────────────────────────────
 const abriendo = ref<string | null>(null);
 
 const seAbreEnNavegador = (a: ArchivoAdjunto) =>
@@ -136,13 +138,34 @@ const abrir = async (a: ArchivoAdjunto) => {
   }
 };
 
-const confirmarEliminar = async (a: ArchivoAdjunto) => {
-  const ok = await dialog.confirmDelete({
-    title: 'Eliminar archivo',
-    text: `¿Eliminar "${a.nombre_original}"?\nEl archivo se borrará definitivamente.`,
-    onConfirm: () => eliminar.mutateAsync(a.id),
-  });
-  if (ok) toast.success('El archivo se eliminó.');
+// ── Dar de baja (no se borra: queda con motivo, fecha y usuario) ─────
+const enBaja = ref<number | null>(null);
+const motivoBaja = ref('');
+const errorBaja = ref<string | null>(null);
+const largoMotivo = computed(() => motivoBaja.value.trim().length);
+
+const iniciarBaja = (a: ArchivoAdjunto) => {
+  enBaja.value = a.id;
+  motivoBaja.value = '';
+  errorBaja.value = null;
+};
+const cancelarBaja = () => {
+  enBaja.value = null;
+  errorBaja.value = null;
+};
+
+const confirmarBaja = async (a: ArchivoAdjunto) => {
+  if (largoMotivo.value < MOTIVO_BAJA_ARCHIVO.minimo) {
+    errorBaja.value = `El motivo debe tener al menos ${MOTIVO_BAJA_ARCHIVO.minimo} caracteres.`;
+    return;
+  }
+  try {
+    await inactivar.mutateAsync({ archivoId: a.id, motivo: motivoBaja.value.trim() });
+    enBaja.value = null;
+    toast.success('Se conserva en «Dados de baja» y se puede seguir consultando.', a.nombre_original);
+  } catch (err) {
+    errorBaja.value = extractFieldErrors(err).motivo ?? extractErrorMessage(err, 'No se pudo dar de baja el archivo.');
+  }
 };
 
 // ── Presentación ─────────────────────────────────────────────────────
@@ -161,7 +184,7 @@ const estiloTipo = (extension: string) => {
   return { etiqueta: e.toUpperCase() || '?', clase: 'bg-neutral-100 text-neutral-600 border-neutral-200' };
 };
 
-const ocupado = computed(() => subidas.value.length > 0);
+const ocupado = computed(() => subidas.value.length > 0 || inactivar.isPending.value);
 </script>
 
 <template>
@@ -223,7 +246,7 @@ const ocupado = computed(() => subidas.value.length > 0);
         <!-- Lista de archivos -->
         <div>
           <h3 class="text-xs font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider mb-2">
-            Archivos {{ archivos.length ? `(${archivos.length})` : '' }}
+            Archivos {{ activos.length ? `(${activos.length})` : '' }}
           </h3>
 
           <ul v-if="isLoading" class="space-y-2" aria-busy="true">
@@ -240,15 +263,15 @@ const ocupado = computed(() => subidas.value.length > 0);
             No se pudieron cargar los archivos: {{ extractErrorMessage(error) }}
           </p>
 
-          <p v-else-if="!archivos.length" class="text-sm text-neutral-500 dark:text-neutral-400 p-4 text-center rounded-xl bg-neutral-50 dark:bg-neutral-800/40">
-            Todavía no hay archivos adjuntos.
+          <p v-else-if="!activos.length" class="text-sm text-neutral-500 dark:text-neutral-400 p-4 text-center rounded-xl bg-neutral-50 dark:bg-neutral-800/40">
+            {{ inactivos.length ? 'No hay archivos vigentes.' : 'Todavía no hay archivos adjuntos.' }}
           </p>
 
           <ul v-else class="space-y-2">
             <li
-              v-for="a in archivos"
+              v-for="a in activos"
               :key="a.id"
-              class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
+              class="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors"
             >
               <span :class="['w-10 h-10 shrink-0 rounded-lg border flex items-center justify-center text-[10px] font-bold', estiloTipo(a.extension).clase]">
                 {{ estiloTipo(a.extension).etiqueta }}
@@ -268,17 +291,85 @@ const ocupado = computed(() => subidas.value.length > 0);
                   {{ abriendo === a.uuid ? 'Abriendo…' : seAbreEnNavegador(a) ? 'Ver' : 'Descargar' }}
                 </button>
                 <button
+                  v-if="enBaja !== a.id"
                   type="button"
                   class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer"
-                  :aria-label="`Eliminar ${a.nombre_original}`"
-                  @click="confirmarEliminar(a)"
+                  :aria-label="`Dar de baja ${a.nombre_original}`"
+                  @click="iniciarBaja(a)"
                 >
-                  Eliminar
+                  Dar de baja
                 </button>
               </div>
+
+              <!-- Motivo de la baja, en la misma fila -->
+              <form v-if="enBaja === a.id" class="w-full space-y-2 pt-1" novalidate @submit.prevent="confirmarBaja(a)">
+                <label :for="`motivo-baja-${a.id}`" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-200">
+                  ¿Por qué se da de baja? <span class="text-red-500">*</span>
+                  <span class="font-normal text-neutral-500 dark:text-neutral-400">El archivo no se borra: queda en «Dados de baja».</span>
+                </label>
+                <textarea
+                  :id="`motivo-baja-${a.id}`"
+                  v-model="motivoBaja"
+                  rows="2"
+                  :maxlength="MOTIVO_BAJA_ARCHIVO.maximo"
+                  placeholder="Ej. Foto borrosa, se adjuntó una nueva"
+                  :aria-invalid="!!errorBaja"
+                  :class="[
+                    'w-full px-3 py-2 rounded-lg border text-sm bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20',
+                    errorBaja ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-700',
+                  ]"
+                ></textarea>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span v-if="errorBaja" role="alert" class="text-xs text-red-600 dark:text-red-400">{{ errorBaja }}</span>
+                  <span v-else class="text-xs text-neutral-400 tabular-nums">{{ largoMotivo }}/{{ MOTIVO_BAJA_ARCHIVO.maximo }}</span>
+                  <div class="flex gap-2 ml-auto">
+                    <button type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer" :disabled="inactivar.isPending.value" @click="cancelarBaja">
+                      Cancelar
+                    </button>
+                    <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white cursor-pointer disabled:opacity-50" :disabled="inactivar.isPending.value">
+                      {{ inactivar.isPending.value ? 'Guardando…' : 'Confirmar baja' }}
+                    </button>
+                  </div>
+                </div>
+              </form>
             </li>
           </ul>
         </div>
+
+        <!-- Dados de baja: se conservan para consulta y auditoría (OCI) -->
+        <details v-if="inactivos.length" class="group rounded-xl border border-neutral-200 dark:border-neutral-800">
+          <summary class="flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer text-xs font-bold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider select-none">
+            Dados de baja ({{ inactivos.length }})
+            <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <ul class="space-y-2 p-3 pt-0">
+            <li v-for="a in inactivos" :key="a.id" class="flex items-start gap-3 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/40">
+              <span :class="['w-10 h-10 shrink-0 rounded-lg border flex items-center justify-center text-[10px] font-bold opacity-60', estiloTipo(a.extension).clase]">
+                {{ estiloTipo(a.extension).etiqueta }}
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm text-neutral-500 dark:text-neutral-400 line-through truncate" :title="a.nombre_original">{{ a.nombre_original }}</p>
+                <p v-if="a.inactivacion" class="text-xs text-neutral-600 dark:text-neutral-300 mt-0.5 break-words">
+                  {{ a.inactivacion.motivo }}
+                </p>
+                <p v-if="a.inactivacion" class="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5">
+                  Baja: {{ fecha(a.inactivacion.fecha) }} · {{ a.inactivacion.usuario_nombre ?? `usuario #${a.inactivacion.usuario}` }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#0d6efd] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer disabled:opacity-50 shrink-0"
+                :disabled="abriendo === a.uuid"
+                :aria-label="`${seAbreEnNavegador(a) ? 'Ver' : 'Descargar'} ${a.nombre_original} (dado de baja)`"
+                @click="abrir(a)"
+              >
+                {{ abriendo === a.uuid ? 'Abriendo…' : seAbreEnNavegador(a) ? 'Ver' : 'Descargar' }}
+              </button>
+            </li>
+          </ul>
+        </details>
       </div>
 
       <!-- Pie -->

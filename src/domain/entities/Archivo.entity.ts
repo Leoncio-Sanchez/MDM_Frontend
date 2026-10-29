@@ -10,7 +10,19 @@ export interface ArchivoAdjunto {
   tamanio_bytes: number;
   fecha_digitacion: string;
   usuario: number;
+  /** Los adjuntos no se borran: se dan de baja y se conservan por si el OCI audita */
+  activo: boolean;
+  inactivacion: {
+    motivo: string;
+    /** ISO con hora de Perú */
+    fecha: string;
+    usuario: number;
+    usuario_nombre: string | null;
+  } | null;
 }
+
+/** Mismos límites que el servidor (InactivacionArchivo) */
+export const MOTIVO_BAJA_ARCHIVO = { minimo: 10, maximo: 500 } as const;
 
 /** Igual que la política del backend (PoliticaArchivos): se valida antes de subir. */
 export const POLITICA_ARCHIVOS = {

@@ -7,7 +7,7 @@
  */
 
 import type { ExpedientesRepositoryPort } from '../../domain/ports/ExpedientesRepository.port';
-import type { Expedientes, ExpedientePendiente } from '../../domain/entities/Expedientes.entity';
+import type { AnularExpedientePayload, Expedientes, ExpedientePendiente } from '../../domain/entities/Expedientes.entity';
 import { httpClient } from '../http/axios.client';
 
 export class ExpedientesRepositoryImpl implements ExpedientesRepositoryPort {
@@ -33,8 +33,9 @@ export class ExpedientesRepositoryImpl implements ExpedientesRepositoryPort {
     return data;
   }
 
-  async delete(id: number): Promise<void> {
-    await httpClient.delete(`${this.baseUrl}${id}/`);
+  async anular(id: number, datos: AnularExpedientePayload): Promise<Expedientes> {
+    const { data } = await httpClient.post(`${this.baseUrl}${id}/anular/`, datos);
+    return data;
   }
 
   async getPendientes(): Promise<ExpedientePendiente[]> {

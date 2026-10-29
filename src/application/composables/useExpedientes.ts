@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query';
 import { container } from '../../composition/container';
-import type { Expedientes } from '../../domain/entities/Expedientes.entity';
+import type { AnularExpedientePayload, Expedientes } from '../../domain/entities/Expedientes.entity';
 
 const KEY = ['expedientes'] as const;
 
@@ -41,12 +41,15 @@ export function useActualizarExpedientes() {
   });
 }
 
-/** Elimina un expedientes */
-export function useEliminarExpedientes() {
+/** Anula un expediente (no se elimina): sale de pendientes y del resumen del dashboard */
+export function useAnularExpediente() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => container.expedientes.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    mutationFn: ({ id, datos }: { id: number; datos: AnularExpedientePayload }) => container.expedientes.anular(id, datos),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
   });
 }
 

@@ -105,8 +105,9 @@ const personasSelectOptions = computed<SelectOption[]>(() =>
   })),
 );
 
+// Un expediente anulado no admite emitir ITSE (el servidor también lo rechaza)
 const expedientesSelectOptions = computed<SelectOption[]>(() =>
-  expedientes.value.map((e) => ({
+  expedientes.value.filter((e) => !e.anulado).map((e) => ({
     value: e.id,
     label: `Expediente N° ${e.numero_expediente ?? e.id}`,
     code: `#${e.numero_expediente ?? e.id}`,

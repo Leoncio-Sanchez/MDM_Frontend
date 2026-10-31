@@ -75,7 +75,7 @@ const avisos = computed(() =>
         </h2>
         <p v-if="s.ayuda" class="text-xs text-neutral-500 dark:text-neutral-400">{{ s.ayuda }}</p>
       </div>
-      <TarjetaTramite v-for="t in s.items" :key="`${t.tipo}-${t.numero}-${t.fecha_emision}`" :tramite="t" />
+      <TarjetaTramite v-for="t in s.items" :key="`${t.tipo}-${t.numero}-${t.fecha_emision}`" :tramite="t" sigue-tema />
     </section>
 
     <p class="text-[11px] text-center text-neutral-500 dark:text-neutral-400">

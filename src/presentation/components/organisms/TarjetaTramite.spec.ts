@@ -54,4 +54,14 @@ describe('tarjeta de trámite del ciudadano', () => {
     expect(tarjeta.text()).toContain('Vigencia indeterminada');
     expect(tarjeta.text()).toContain('ABARROTES');
   });
+
+  it('sigue el modo oscuro solo en "Mis trámites"; la consulta pública es siempre clara', () => {
+    const nota = { estado: 'PROGRAMADA', fecha: '2026-11-05' } as const;
+    const publica = mount(TarjetaTramite, { props: { tramite: expediente(nota) } });
+    const misTramites = mount(TarjetaTramite, { props: { tramite: expediente(nota), sigueTema: true } });
+
+    expect(publica.html()).not.toContain('dark:');
+    expect(misTramites.find('article').classes()).toContain('dark:bg-[#18181b]');
+    expect(misTramites.find('[role="note"]').classes()).toContain('dark:bg-sky-950/40');
+  });
 });

@@ -31,9 +31,9 @@ const emit = defineEmits<{
       :placeholder="placeholder"
       :required="required"
       :disabled="disabled"
-      class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+      class="block w-full rounded-md border-gray-300 bg-white placeholder:text-gray-400 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
       :class="[
-        error ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500' : ''
+        error ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500' : 'text-gray-900'
       ]"
     />
     <p v-if="error" class="mt-2 text-sm text-red-600">{{ error }}</p>

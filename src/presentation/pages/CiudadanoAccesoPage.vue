@@ -84,7 +84,7 @@ const titulo = computed(() => ({ ingresar: 'Ingrese a Mis trámites', registrar:
 const boton = computed(() => ({ ingresar: 'Ingresar', registrar: 'Crear cuenta e ingresar', restablecer: 'Guardar contraseña e ingresar' })[modo.value]);
 
 const claseCampo = (campo: string) => [
-  'block w-full rounded-xl border px-3.5 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-[#0B3C5D]',
+  'block w-full rounded-xl border px-3.5 py-2.5 text-sm bg-white text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-[#0B3C5D]',
   errores.value[campo] ? 'border-red-400' : 'border-neutral-300',
 ];
 </script>

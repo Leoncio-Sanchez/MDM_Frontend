@@ -91,12 +91,11 @@ const tupaSelectOptions = computed<SelectOption[]>(() => {
 
 const personasSelectOptions = computed<SelectOption[]>(() => {
   return personasOptions.value.map((p: any) => {
-    const fullName = `${p.nombres || ''} ${p.apellido_paterno || ''} ${p.apellido_materno || ''}`.trim() || p.razon_social || `Persona #${p.id}`;
     return {
       value: p.id,
-      label: fullName,
-      code: `ID: ${p.id}`,
-      badge: p.numero_documento ? `Doc: ${p.numero_documento}` : undefined,
+      label: nombrePersona(p) || `Persona #${p.id}`,
+      // Todos sus documentos, para encontrarla por cualquiera de ellos (DNI, RUC, CE...)
+      badge: (p.documentos ?? []).map((d: any) => d.numero_documento).join(' · ') || undefined,
     };
   });
 });
@@ -224,7 +223,7 @@ const handleSubmit = () => {
     return;
   }
   if (!form.value.solicitante_id) {
-    formError.value = 'El ID del solicitante (Persona) es obligatorio';
+    formError.value = 'Seleccione el solicitante. Si no aparece, regístrelo primero en Personas.';
     return;
   }
 
@@ -471,42 +470,37 @@ const abrirArchivos = (row: { id: number; numero_expediente?: string | number })
           />
         </div>
 
-        <!-- ID de Solicitante / Administrado (Selector Buscador de Personas) -->
+        <!-- Solicitante y representante: se buscan por documento o nombre entre las personas registradas -->
         <div>
           <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
             Solicitante / Administrado <span class="text-red-500">*</span>
           </label>
           <SearchableSelect
-            v-if="personasOptions.length > 0"
             v-model="form.solicitante_id"
             :options="personasSelectOptions"
-            placeholder="Buscar solicitante por nombre o documento..."
+            placeholder="Buscar solicitante por DNI, RUC o nombre..."
             search-placeholder="Escriba DNI, RUC o nombres..."
-          />
-          <input
-            v-else
-            v-model="form.solicitante_id"
-            type="number"
-            min="1"
-            required
-            placeholder="Ingrese ID de Persona (ej. 1)"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 transition-all"
           />
         </div>
 
-        <!-- ID de Representante Legal (Opcional) -->
         <div>
           <label class="block text-xs font-bold text-neutral-700 dark:text-neutral-300 uppercase tracking-wider mb-1.5">
-            ID Representante Legal <span class="text-neutral-400 dark:text-neutral-500 font-normal">(Opcional)</span>
+            Representante Legal <span class="text-neutral-400 dark:text-neutral-500 font-normal">(Opcional)</span>
           </label>
-          <input
+          <SearchableSelect
             v-model="form.representante_id"
-            type="number"
-            min="1"
-            placeholder="ID representante legal si aplica"
-            class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 transition-all"
+            :options="personasSelectOptions"
+            placeholder="Sin representante"
+            search-placeholder="Escriba DNI, RUC o nombres..."
           />
         </div>
+
+        <p class="sm:col-span-2 -mt-2 text-[11px] text-neutral-500 dark:text-neutral-400">
+          <template v-if="personasOptions.length === 0">No hay personas registradas.</template>
+          <template v-else>¿No aparece?</template>
+          Regístrela primero en
+          <router-link to="/admin/personas" class="font-semibold text-[#0d6efd] hover:underline">Personas / Administrados</router-link><template v-if="!isEditMode">; lo que lleva escrito aquí se guarda como borrador</template>.
+        </p>
 
         <!-- Observaciones / Sumilla -->
         <div class="sm:col-span-2">

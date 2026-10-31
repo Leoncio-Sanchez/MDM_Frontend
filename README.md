@@ -1,82 +1,113 @@
-# Frontend Municipal — Sistema LF ITSE
+# Frontend — Sistema LF-ITSE
 
-Frontend del sistema de Licencias de Funcionamiento (LF) e Inspecciones
-Técnicas de Seguridad en Edificaciones (ITSE) de la Municipalidad.
+Interfaz web del sistema de **Licencias de Funcionamiento (LF)** e **Inspecciones Técnicas de Seguridad en
+Edificaciones (ITSE)** de la Municipalidad Distrital de Morales. Consume la API de
+[MDM_BACKEND](https://github.com/Leoncio-Sanchez/MDM_BACKEND).
+
+Tiene cuatro entradas, una por tipo de usuario:
+
+| Quién | Entra por | Ve |
+|---|---|---|
+| Personal de oficina | `/login` | Panel `/admin`, con las pantallas que permiten sus casillas de acceso |
+| Inspector de campo | `/login` | Bandeja `/inspector` y registro del acta (pensado para celular) |
+| Ciudadano | `/ciudadano/ingresar` | "Mis trámites" `/ciudadano` |
+| Cualquiera | `/consulta` | Consulta de un trámite con su número y el DNI o RUC |
+
+El detalle por perfil está en [`_docs/MANUAL_DE_USO.md`](_docs/MANUAL_DE_USO.md) y en
+`_docs/PERFILES_Y_ACCESOS.md` del backend.
 
 ## Stack
 
-- **Vue 3** con Composition API (`<script setup>`)
-- **Vite** como bundler
-- **TypeScript** estricto
-- **Pinia** para estado global
-- **Vue Router** para navegación
-- **@tanstack/vue-query** para fetching y cache
-- **Tailwind CSS v4** para estilos
-- **Axios** como cliente HTTP
-- **Vitest** + **@vue/test-utils** para tests
+| Pieza | Versión |
+|---|---|
+| Vue (Composition API, `<script setup>`) | 3.5 |
+| TypeScript | 6 (estricto) |
+| Vite | 8 |
+| Tailwind CSS | 4 (modo oscuro por clase `.dark`) |
+| Pinia | sesión, tema y notificaciones |
+| @tanstack/vue-query | caché de datos del servidor |
+| Axios | cliente HTTP con renovación automática del token |
+| Vitest + @vue/test-utils + jsdom | tests |
 
-## Arquitectura
+## Puesta en marcha
 
-Clean Architecture con las siguientes capas:
-
-- `src/domain/` — Entidades, ports (contratos), errores de negocio. **Puro TypeScript.**
-- `src/application/` — Composables (React Query + Container), DTOs, mappers, use cases.
-- `src/infrastructure/` — Implementaciones de ports, Axios, Pinia store.
-- `src/presentation/` — Componentes `.vue`, páginas, layouts, router, estilos.
-- `src/composition/` — Composition Root (único lugar con `new XxxRepositoryImpl()`).
-
-Ver `_docs/ARCHITECTURE.md` para el detalle completo.
-
-## Estructura
-```text
-frontend-reversed-pro_vue/
-├── public/                       # favicon, icons, imágenes
-├── src/                          # código fuente
-│   ├── application/              # composables, DTOs, mappers, use cases
-│   ├── composition/              # container.ts
-│   ├── domain/                   # entities, ports, exceptions
-│   ├── infrastructure/           # http, repositories, store (Pinia)
-│   └── presentation/             # components, pages, router, styles
-├── _docs/                        # documentación oficial
-├── _forensics/                   # evidencia forense (discrepancias)
-├── _validation/                  # validación visual (pixelmatch)
-└── scripts/                      # scripts de mantenimiento
-```
-
-## Instalación
+Requiere Node 22 y pnpm 11 (las versiones del CI), y el backend corriendo (por defecto en `http://localhost:8001`).
 
 ```bash
 pnpm install
+cp .env.example .env.local   # ajustar VITE_API_URL si el backend está en otra dirección
+pnpm dev                  # http://localhost:5173
 ```
 
-## Desarrollo
+| Comando | Para qué |
+|---|---|
+| `pnpm dev` | Servidor de desarrollo con recarga en caliente |
+| `pnpm build` | Verifica tipos (`vue-tsc`) y genera `dist/` |
+| `pnpm preview` | Sirve el build de `dist/` |
+| `pnpm test` | Corre los tests una vez |
+| `pnpm test:watch` | Tests en modo observador |
 
-```bash
-pnpm dev          # servidor dev en http://localhost:5173
-pnpm build        # build de producción
-pnpm preview      # preview del build
-pnpm test         # tests con Vitest
-pnpm lint         # eslint
-pnpm vue-tsc -b   # typecheck
-```
+### Variables de entorno
 
-## Variables de entorno
-Crear `.env.local` basado en `.env.example`:
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:8001/api` | URL base de la API |
+| `VITE_HTTP_TIMEOUT` | `15000` | Espera máxima por pedido, en ms |
+
+Se leen al compilar: cambiarlas exige volver a correr `pnpm build`. Los valores propios van en `.env.local`,
+que Git ignora.
+
+### Usuarios para probar
+
+El backend crea un usuario por perfil con `php artisan usuarios:prueba` (`prueba_mesa`, `prueba_licencias`,
+`prueba_itse`, `prueba_jefe_itse`, `prueba_inspector1`, `prueba_inspector2`, `prueba_admin`, `prueba_auditor`).
+La contraseña la genera el comando; no se guarda en el repositorio.
+
+## Estructura
 
 ```text
-VITE_API_URL=http://localhost:8000/api
-VITE_APP_ENV=development
+src/
+├── domain/           entidades, ports (contratos de los repositorios) y errores. TypeScript puro
+├── application/      composables con vue-query, DTOs, mappers y casos de uso
+├── infrastructure/   cliente HTTP, implementación de los repositorios y stores de Pinia
+├── composition/      container.ts: el único lugar donde se instancian los repositorios
+└── presentation/     páginas, componentes (atoms, molecules, organisms, templates), router y utilidades
 ```
 
-## Despliegue en IIS
-1. `pnpm build` genera `dist/`.
-2. Copiar `dist/` completo a la carpeta del sitio IIS.
-3. Verificar que `web.config` está presente en la raíz del sitio.
-4. Verificar que la extensión URL Rewrite de IIS está instalada.
-5. Verificar que MIME Types incluye `.woff2`, `.svg`, `.json`.
+Cómo se conectan las capas, el manejo de la sesión, los permisos y las convenciones de código:
+[`_docs/ARQUITECTURA.md`](_docs/ARQUITECTURA.md).
 
-## Documentación adicional
-- `_docs/ARCHITECTURE.md` — Arquitectura y flujo de datos.
-- `_docs/ACTA_DE_CIERRE.md` — Acta formal del proyecto.
-- `_forensics/` — Hallazgos forenses.
-- `_validation/` — Evidencia visual (pixelmatch).
+## Tests
+
+```bash
+pnpm test
+```
+
+Cubren las reglas que más importan: qué ve cada perfil en el menú y a dónde lo lleva el router
+(`router/permisos.spec.ts`), la renovación del token, el contrato con la API, los borradores de formularios, las
+fechas en hora de Lima y los componentes de inspección, denegatoria y "Mis trámites". Los tests corren con
+`TZ=America/Lima` (ver `vitest.config.ts`).
+
+## Integración continua
+
+`.github/workflows/ci.yml` corre en cada push y PR: `pnpm install --frozen-lockfile`, `pnpm test` y `pnpm build`.
+
+## Despliegue
+
+`pnpm build` genera `dist/`, una aplicación estática. El servidor web debe:
+
+- Servir `index.html` para cualquier ruta que no sea un archivo (las rutas son del lado del cliente).
+- Publicar la API del backend en la dirección configurada en `VITE_API_URL`, con HTTPS.
+
+El despliegue en el VPS (Docker con Nginx y certificado HTTPS) está preparado en el backend y se hará cuando el
+servidor esté disponible.
+
+## Documentación
+
+| Documento | Contenido |
+|---|---|
+| [`_docs/MANUAL_DE_USO.md`](_docs/MANUAL_DE_USO.md) | Paso a paso de cada perfil |
+| [`_docs/ARQUITECTURA.md`](_docs/ARQUITECTURA.md) | Capas, sesión, permisos y convenciones |
+| [`_docs/CHECKLIST_PENDIENTES.md`](_docs/CHECKLIST_PENDIENTES.md) | Revisión del 12/10/2026 (histórico) |
+| [`_docs/ACTA_DE_CIERRE.md`](_docs/ACTA_DE_CIERRE.md) | Acta de cierre del frontend del 18/09/2026 (histórico) |
+| `_forensics/`, `_validation/` | Evidencia de la reconstrucción del bundle original (histórico) |

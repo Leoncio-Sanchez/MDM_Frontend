@@ -1,7 +1,19 @@
 import axios from 'axios';
 
+const resolveBaseUrl = (): string => {
+  const envUrl = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  if (!envUrl) {
+    return 'http://localhost:8001/api';
+  }
+  let cleanUrl = envUrl.replace(/\/+$/, '');
+  if (!cleanUrl.endsWith('/api')) {
+    cleanUrl = `${cleanUrl}/api`;
+  }
+  return cleanUrl;
+};
+
 export const httpClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8001/api',
+  baseURL: resolveBaseUrl(),
   timeout: Number(import.meta.env.VITE_HTTP_TIMEOUT) || 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -87,7 +99,8 @@ httpClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshUrl = `${httpClient.defaults.baseURL}/auth/jwt/refresh/`;
+        const baseUrl = httpClient.defaults.baseURL?.replace(/\/+$/, '') ?? '';
+        const refreshUrl = `${baseUrl}/auth/jwt/refresh/`;
         const { data } = await axios.post(refreshUrl, { refresh: refreshToken });
 
         const newAccessToken = data.access;

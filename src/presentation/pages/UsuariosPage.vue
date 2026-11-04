@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { CONTRASENA_MINIMA, cumpleContrasena, MENSAJE_CONTRASENA } from '../utils/contrasena';
 import CrudTable from '../components/organisms/CrudTable.vue';
 import LargeModal from '../components/molecules/LargeModal.vue';
 import ModalShell from '../components/molecules/ModalShell.vue';
@@ -198,8 +199,8 @@ const handleSubmit = async () => {
   }
 
   if (!isEditMode.value) {
-    if (!form.value.password || form.value.password.length < 6) {
-      formError.value = 'La contraseña debe tener al menos 6 caracteres.';
+    if (!cumpleContrasena(form.value.password)) {
+      formError.value = MENSAJE_CONTRASENA;
       return;
     }
     if (form.value.password !== form.value.password_confirm) {
@@ -207,8 +208,8 @@ const handleSubmit = async () => {
       return;
     }
   } else if (changePassword.value) {
-    if (!form.value.password || form.value.password.length < 6) {
-      formError.value = 'La nueva contraseña debe tener al menos 6 caracteres.';
+    if (!cumpleContrasena(form.value.password)) {
+      formError.value = MENSAJE_CONTRASENA;
       return;
     }
     if (form.value.password !== form.value.password_confirm) {
@@ -421,7 +422,7 @@ const handleSubmit = async () => {
             <input
               v-model="form.password"
               type="password"
-              placeholder="Mínimo 6 caracteres"
+              :placeholder="`Mínimo ${CONTRASENA_MINIMA} caracteres`"
               class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] text-neutral-800 dark:text-neutral-200 transition-all"
             />
           </div>

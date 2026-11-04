@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { CONTRASENA_MINIMA, cumpleContrasena, MENSAJE_CONTRASENA } from '../utils/contrasena';
 import {
   useInspectoresList,
   useCrearInspectores,
@@ -104,6 +105,11 @@ const handleSubmit = () => {
   }
   if (!isEditMode.value && !form.value.password) {
     formError.value = 'Debe definir una contraseña inicial para el inspector';
+    return;
+  }
+  // En edición, en blanco conserva la contraseña actual
+  if (form.value.password && !cumpleContrasena(form.value.password)) {
+    formError.value = MENSAJE_CONTRASENA;
     return;
   }
 
@@ -215,7 +221,7 @@ const handleSubmit = () => {
             <input
               v-model="form.password"
               type="password"
-              :placeholder="isEditMode ? 'Dejar en blanco para no cambiar' : 'Contraseña segura'"
+              :placeholder="isEditMode ? `En blanco para no cambiar, o mínimo ${CONTRASENA_MINIMA} caracteres` : `Mínimo ${CONTRASENA_MINIMA} caracteres`"
               :required="!isEditMode"
               class="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#0d6efd] bg-white dark:bg-[#18181b] transition-all font-mono text-neutral-800 dark:text-neutral-200"
             />
